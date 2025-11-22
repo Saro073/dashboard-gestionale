@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Gestionale</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-container">
+        <div class="login-box">
+            <h1>Dashboard Gestionale</h1>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" required autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" required autocomplete="current-password">
+                </div>
+                <button type="submit" class="btn btn-primary btn-full-width">Accedi</button>
+                <div id="loginError" class="error-message" style="display: none;"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="dashboard" class="dashboard-container" style="display: none;">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>Dashboard</h2>
+                <span id="userDisplay" class="user-badge"></span>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-section="overview">
+                    <span class="nav-icon">📊</span>
+                    <span>Overview</span>
+                </a>
+                <a href="#" class="nav-item" data-section="contacts">
+                    <span class="nav-icon">👥</span>
+                    <span>Contatti</span>
+                </a>
+                <a href="#" class="nav-item" data-section="tasks">
+                    <span class="nav-icon">✓</span>
+                    <span>Task</span>
+                </a>
+                <a href="#" class="nav-item" data-section="notes">
+                    <span class="nav-icon">📝</span>
+                    <span>Note</span>
+                </a>
+                <a href="#" class="nav-item" data-section="documents">
+                    <span class="nav-icon">📄</span>
+                    <span>Documenti</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <button id="logoutBtn" class="btn btn-secondary btn-full-width">Esci</button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="content-header">
+                <h1 id="sectionTitle">Overview</h1>
+                <div class="header-actions">
+                    <button id="themeToggle" class="btn btn-secondary">🌓</button>
+                </div>
+            </header>
+
+            <!-- Overview Section -->
+            <div id="overviewSection" class="content-section active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-info">
+                            <h3 id="contactsCount">0</h3>
+                            <p>Contatti</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">✓</div>
+                        <div class="stat-info">
+                            <h3 id="tasksCount">0</h3>
+                            <p>Task Attivi</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📝</div>
+                        <div class="stat-info">
+                            <h3 id="notesCount">0</h3>
+                            <p>Note</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📄</div>
+                        <div class="stat-info">
+                            <h3 id="documentsCount">0</h3>
+                            <p>Documenti</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="recent-activity">
+                    <h2>Attività Recenti</h2>
+                    <div id="recentActivity" class="activity-list">
+                        <p class="empty-state">Nessuna attività recente</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contacts Section -->
+            <div id="contactsSection" class="content-section">
+                <div class="section-toolbar">
+                    <input type="text" id="contactSearch" class="form-control" placeholder="Cerca contatti...">
+                    <select id="contactFilter" class="form-control">
+                        <option value="all">Tutti</option>
+                        <option value="cliente">Clienti</option>
+                        <option value="fornitore">Fornitori</option>
+                        <option value="partner">Partner</option>
+                    </select>
+                    <button id="addContactBtn" class="btn btn-primary">+ Aggiungi Contatto</button>
+                </div>
+                <div id="contactsList" class="items-grid">
+                    <p class="empty-state">Nessun contatto presente</p>
+                </div>
+            </div>
+
+            <!-- Tasks Section -->
+            <div id="tasksSection" class="content-section">
+                <div class="section-toolbar">
+                    <select id="taskFilter" class="form-control">
+                        <option value="all">Tutti</option>
+                        <option value="active">Attivi</option>
+                        <option value="completed">Completati</option>
+                    </select>
+                    <button id="addTaskBtn" class="btn btn-primary">+ Aggiungi Task</button>
+                </div>
+                <div id="tasksList" class="items-list">
+                    <p class="empty-state">Nessun task presente</p>
+                </div>
+            </div>
+
+            <!-- Notes Section -->
+            <div id="notesSection" class="content-section">
+                <div class="section-toolbar">
+                    <select id="noteFilter" class="form-control">
+                        <option value="all">Tutte</option>
+                        <option value="lavoro">Lavoro</option>
+                        <option value="personale">Personale</option>
+                        <option value="idee">Idee</option>
+                    </select>
+                    <button id="addNoteBtn" class="btn btn-primary">+ Nuova Nota</button>
+                </div>
+                <div id="notesList" class="items-grid">
+                    <p class="empty-state">Nessuna nota presente</p>
+                </div>
+            </div>
+
+            <!-- Documents Section -->
+            <div id="documentsSection" class="content-section">
+                <div class="section-toolbar">
+                    <select id="documentFilter" class="form-control">
+                        <option value="all">Tutti</option>
+                        <option value="contratti">Contratti</option>
+                        <option value="fatture">Fatture</option>
+                        <option value="reports">Reports</option>
+                        <option value="altro">Altro</option>
+                    </select>
+                    <button id="addDocumentBtn" class="btn btn-primary">+ Carica Documento</button>
+                </div>
+                <div id="documentsList" class="items-list">
+                    <p class="empty-state">Nessun documento presente</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Contact Modal -->
+    <div id="contactModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="contactModalTitle">Aggiungi Contatto</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="contactForm">
+                <div class="form-group">
+                    <label for="contactName">Nome *</label>
+                    <input type="text" id="contactName" required>
+                </div>
+                <div class="form-group">
+                    <label for="contactEmail">Email</label>
+                    <input type="email" id="contactEmail">
+                </div>
+                <div class="form-group">
+                    <label for="contactPhone">Telefono</label>
+                    <input type="tel" id="contactPhone">
+                </div>
+                <div class="form-group">
+                    <label for="contactCompany">Azienda</label>
+                    <input type="text" id="contactCompany">
+                </div>
+                <div class="form-group">
+                    <label for="contactCategory">Categoria</label>
+                    <select id="contactCategory">
+                        <option value="cliente">Cliente</option>
+                        <option value="fornitore">Fornitore</option>
+                        <option value="partner">Partner</option>
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary modal-close">Annulla</button>
+                    <button type="submit" class="btn btn-primary">Salva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Task Modal -->
+    <div id="taskModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Aggiungi Task</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="taskForm">
+                <div class="form-group">
+                    <label for="taskTitle">Titolo *</label>
+                    <input type="text" id="taskTitle" required>
+                </div>
+                <div class="form-group">
+                    <label for="taskDescription">Descrizione</label>
+                    <textarea id="taskDescription" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="taskPriority">Priorità</label>
+                    <select id="taskPriority">
+                        <option value="bassa">Bassa</option>
+                        <option value="media" selected>Media</option>
+                        <option value="alta">Alta</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="taskDueDate">Scadenza</label>
+                    <input type="date" id="taskDueDate">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary modal-close">Annulla</button>
+                    <button type="submit" class="btn btn-primary">Salva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Note Modal -->
+    <div id="noteModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Nuova Nota</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="noteForm">
+                <div class="form-group">
+                    <label for="noteTitle">Titolo *</label>
+                    <input type="text" id="noteTitle" required>
+                </div>
+                <div class="form-group">
+                    <label for="noteContent">Contenuto</label>
+                    <textarea id="noteContent" rows="5"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="noteCategory">Categoria</label>
+                    <select id="noteCategory">
+                        <option value="lavoro">Lavoro</option>
+                        <option value="personale">Personale</option>
+                        <option value="idee">Idee</option>
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary modal-close">Annulla</button>
+                    <button type="submit" class="btn btn-primary">Salva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Document Modal -->
+    <div id="documentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Carica Documento</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="documentForm">
+                <div class="form-group">
+                    <label for="documentName">Nome Documento *</label>
+                    <input type="text" id="documentName" required>
+                </div>
+                <div class="form-group">
+                    <label for="documentCategory">Categoria</label>
+                    <select id="documentCategory">
+                        <option value="contratti">Contratti</option>
+                        <option value="fatture">Fatture</option>
+                        <option value="reports">Reports</option>
+                        <option value="altro">Altro</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="documentFile">File</label>
+                    <input type="file" id="documentFile">
+                </div>
+                <div class="form-group">
+                    <label for="documentNotes">Note</label>
+                    <textarea id="documentNotes" rows="3"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary modal-close">Annulla</button>
+                    <button type="submit" class="btn btn-primary">Carica</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
