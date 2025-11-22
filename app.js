@@ -9,10 +9,98 @@ let tasks = [];
 let notes = [];
 let documents = [];
 
+// ==================== INITIAL DATA ====================
+const INITIAL_TASKS = [
+  {
+    title: 'Contratto con Proprietario',
+    description: 'Firma Mietvertrag con clausole Untervermietung, pilot-phase 6 mesi, Vorkaufsrecht',
+    priority: 'alta',
+    dueDate: '2025-11-22',
+    completed: false
+  },
+  {
+    title: 'Anmeldung Finanzamt Steuernummer',
+    description: 'Richiesta Steuernummer via ELSTER, setup contabilità',
+    priority: 'alta',
+    dueDate: '2025-11-24',
+    completed: false
+  },
+  {
+    title: 'Assicurazione Ferienwohnung',
+    description: 'Haftpflicht + Hausrat 450€/anno, certificato attivo 1 Dic',
+    priority: 'alta',
+    dueDate: '2025-11-24',
+    completed: false
+  },
+  {
+    title: 'Sopralluogo e Inventory Check',
+    description: 'Checklist completa immobile: dimensioni, difetti, manutenzioni necessarie',
+    priority: 'alta',
+    dueDate: '2025-11-25',
+    completed: false
+  },
+  {
+    title: 'Ordine Mobili IKEA',
+    description: 'Letto, armadio, tavolo, sedie, mensole (1.800€ budget)',
+    priority: 'alta',
+    dueDate: '2025-11-27',
+    completed: false
+  },
+  {
+    title: 'Servizio Fotografico Professionale',
+    description: 'Booking fotografo, 25-30 foto, editing incluso (400-500€)',
+    priority: 'media',
+    dueDate: '2025-12-15',
+    completed: false
+  },
+  {
+    title: 'Creazione Listing Airbnb',
+    description: 'Listing completo: foto, descrizione, amenities, pricing',
+    priority: 'alta',
+    dueDate: '2025-12-20',
+    completed: false
+  },
+  {
+    title: 'Partner Pulizie Professionali',
+    description: 'Ricerca e contratto con servizio pulizie (25€/turnover)',
+    priority: 'media',
+    dueDate: '2025-12-10',
+    completed: false
+  },
+  {
+    title: 'Soft Launch Amici & Famiglia',
+    description: 'Test weekend con feedback dettagliato',
+    priority: 'media',
+    dueDate: '2025-12-27',
+    completed: false
+  },
+  {
+    title: 'Lancio Ufficiale Airbnb',
+    description: 'Attivazione calendario pubblico, pricing competitivo',
+    priority: 'alta',
+    dueDate: '2026-01-01',
+    completed: false
+  }
+];
+
 // ==================== STORAGE MANAGEMENT ====================
 function loadData() {
   contacts = JSON.parse(localStorage.getItem('contacts') || '[]');
-  tasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+  
+  // Load tasks with initial data if empty
+  const savedTasks = localStorage.getItem('tasks');
+  if (savedTasks) {
+    tasks = JSON.parse(savedTasks);
+  } else {
+    // First time load: populate with initial tasks
+    tasks = INITIAL_TASKS.map((task, index) => ({
+      id: Date.now() + index,
+      ...task,
+      createdAt: new Date().toISOString()
+    }));
+    saveTasks();
+  }
+  
   notes = JSON.parse(localStorage.getItem('notes') || '[]');
   documents = JSON.parse(localStorage.getItem('documents') || '[]');
 }
