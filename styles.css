@@ -381,6 +381,34 @@ textarea {
   min-width: 200px;
 }
 
+/* View Toggle Buttons */
+.view-toggle-group {
+    display: flex;
+    gap: 0.25rem;
+    margin-left: auto;
+}
+
+.view-toggle {
+    padding: 0.5rem;
+    min-width: 40px;
+    font-size: 1rem;
+    border: 1px solid var(--border-color);
+    background-color: var(--surface-color);
+    color: var(--text-secondary);
+    transition: all 0.2s;
+}
+
+.view-toggle.active {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.view-toggle:hover:not(.active) {
+    background-color: var(--border-color);
+    color: var(--text-primary);
+}
+
 /* Items Grid/List */
 .items-grid {
   display: grid;
@@ -392,6 +420,32 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+/* List View Styles */
+.items-list-view {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.items-list-view .item-card {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    margin: 0;
+}
+
+.items-list-view .item-card h3 {
+    margin: 0;
+    font-size: 1rem;
+    flex: 1;
+}
+
+.items-list-view .item-card p {
+    margin: 0 1rem 0 0;
+    font-size: 0.875rem;
 }
 
 .item-card {
