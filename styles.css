@@ -286,6 +286,9 @@ textarea {
 .btn-secondary {
   background-color: var(--secondary-color);
   color: white;
+    min-width: 90px;
+  font-weight: 500;
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-secondary:hover {
@@ -435,6 +438,7 @@ textarea {
 .badge-fornitore { background: #fef3c7; color: #92400e; }
 .badge-partner { background: #d1fae5; color: #065f46; }
 .badge-alta { background: #fee2e2; color: #991b1b; }
+.badge-critical { background: #7f1d1d; color: #ffffff; }
 .badge-media { background: #fef3c7; color: #92400e; }
 .badge-bassa { background: #dbeafe; color: #1e40af; }
 .badge-lavoro { background: #e0e7ff; color: #3730a3; }
