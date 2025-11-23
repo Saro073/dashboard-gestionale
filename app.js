@@ -243,6 +243,44 @@ function renderContacts(filter = 'all', searchTerm = '') {
   `).join('');
 }
 
+function renderContactsSorted(sortedContacts, filter = 'all', searchTerm = '') {
+    const container = document.getElementById('contactsList');
+    let filteredContacts = sortedContacts;
+
+    if (filter !== 'all') {
+        filteredContacts = filteredContacts.filter(c => c.category === filter);
+    }
+
+    if (searchTerm) {
+        filteredContacts = filteredContacts.filter(c =>
+            c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (c.email && c.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (c.company && c.company.toLowerCase().includes(searchTerm.toLowerCase()))
+        );
+    }
+
+    if (filteredContacts.length === 0) {
+        container.innerHTML = '<p class="empty-state">Nessun contatto trovato</p>';
+        return;
+    }
+
+    container.innerHTML = filteredContacts.map(contact => `
+        <div class="item-card">
+            <h3>${contact.name}</h3>
+            ${contact.email ? `<p>📧 ${contact.email}</p>` : ''}
+            ${contact.phone ? `<p>📞 ${contact.phone}</p>` : ''}
+            ${contact.company ? `<p>🏢 ${contact.company}</p>` : ''}
+            <div class="item-meta">
+                <span class="item-badge badge-${contact.category}">${contact.category}</span>
+            </div>
+            <div class="item-actions">
+                <button class="btn btn-sm btn-secondary" onclick="editContact(${contact.id})">Modifica</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteContact(${contact.id})">Elimina</button>
+            </div>
+        </div>
+    `).join('');
+}
+
 function addContact(contactData) {
   const contact = {
     id: Date.now(),
@@ -556,6 +594,31 @@ document.addEventListener('DOMContentLoaded', () => {
     closeModal('contactModal');
     document.getElementById('contactForm').reset();
   });
+
+  // View toggle for contacts
+document.getElementById('gridViewBtn').addEventListener('click', () => {
+    document.getElementById('gridViewBtn').classList.add('active');
+    document.getElementById('listViewBtn').classList.remove('active');
+    const container = document.getElementById('contactsList');
+    container.classList.remove('items-list-view');
+    container.classList.add('items-grid');
+    const filter = document.getElementById('contactFilter').value;
+    const search = document.getElementById('contactSearch').value;
+    renderContacts(filter, search);
+});
+
+document.getElementById('listViewBtn').addEventListener('click', () => {
+    document.getElementById('listViewBtn').classList.add('active');
+    document.getElementById('gridViewBtn').classList.remove('active');
+    const container = document.getElementById('contactsList');
+    container.classList.remove('items-grid');
+    container.classList.add('items-list-view');
+    const filter = document.getElementById('contactFilter').value;
+    const search = document.getElementById('contactSearch').value;
+    // Sort contacts alphabetically by name
+    const sortedContacts = [...contacts].sort((a, b) => a.name.localeCompare(b.name));
+    renderContactsSorted(sortedContacts, filter, search);
+});
 
   // Task management
   document.getElementById('addTaskBtn').addEventListener('click', () => {
