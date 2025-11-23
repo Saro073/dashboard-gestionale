@@ -600,8 +600,7 @@ textarea {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.5rem;
-  border-bottom: 1px solid var(--border-color);
+    padding: 2rem 1.5rem;  border-bottom: 1px solid var(--border-color);
 }
 
 .modal-header h2 {
@@ -640,6 +639,24 @@ textarea {
   padding-top: 1rem;
   margin-top: 1rem;
   border-top: 1px solid var(--border-color);
+}
+
+.modal-footer .btn-secondary {
+    background-color: #f1f5f9;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    min-width: 90px;
+    font-weight: 500;
+}
+
+.modal-footer .btn-secondary:hover {
+    background-color: #e2e8f0;
+    border-color: var(--secondary-color);
+}
+
+.modal-footer .btn-primary {
+    min-width: 90px;
+    font-weight: 500;
 }
 
 /* ==================== RESPONSIVE ==================== */
