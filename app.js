@@ -273,6 +273,7 @@ function editContact(id) {
     document.getElementById('contactPhone').value = contact.phone || '';
     document.getElementById('contactCompany').value = contact.company || '';
     document.getElementById('contactCategory').value = contact.category;
+            document.getElementById('contactNotes').value = contact.notes || '';
     openModal('contactModal');
   }
 }
@@ -542,7 +543,8 @@ document.addEventListener('DOMContentLoaded', () => {
       email: document.getElementById('contactEmail').value,
       phone: document.getElementById('contactPhone').value,
       company: document.getElementById('contactCompany').value,
-      category: document.getElementById('contactCategory').value
+      category: document.getElementById('contactCategory').value,
+                  notes: document.getElementById('contactNotes').value
     };
 
     if (editingContactId) {
