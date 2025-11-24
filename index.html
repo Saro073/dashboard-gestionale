@@ -55,6 +55,11 @@
                     <span class="nav-icon">📄</span>
                     <span>Documenti</span>
                 </a>
+                <!-- Users Section (Admin Only) -->
+                <a href="#users" class="nav-item" data-section="users" id="usersNavItem" style="display: none;">
+                    <span class="nav-icon">🔐</span>
+                    <span>Utenti</span>
+                </a>
             </nav>
             <div class="sidebar-footer">
                 <button id="logoutBtn" class="btn btn-secondary btn-full-width">Esci</button>
@@ -179,6 +184,28 @@
                     <p class="empty-state">Nessun documento presente</p>
                 </div>
             </div>
+
+            <!-- Users Section (Admin Only) -->
+            <div id="usersSection" class="content-section" style="display: none;">
+                <div class="section-toolbar">
+                    <input type="text" id="userSearch" class="form-control" placeholder="Cerca utenti...">
+                    <select id="userRoleFilter" class="form-control">
+                        <option value="all">Tutti i Ruoli</option>
+                        <option value="admin">Admin</option>
+                        <option value="user">Utenti</option>
+                    </select>
+                    <select id="userStatusFilter" class="form-control">
+                        <option value="all">Tutti gli Stati</option>
+                        <option value="true">Attivi</option>
+                        <option value="false">Disattivati</option>
+                    </select>
+                    <button id="addUserBtn" class="btn btn-primary">+ Nuovo Utente</button>
+                </div>
+                <div id="usersList" class="items-list">
+                    <p class="empty-state">Nessun utente presente</p>
+                </div>
+            </div>
+
         </main>
     </div>
 
@@ -331,11 +358,50 @@
         </div>
     </div>
 
+    <!-- User Modal (Admin Only) -->
+    <div id="userModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="userModalTitle">Nuovo Utente</h2>
+                <button class="modal-close" onclick="document.getElementById('userModal').classList.remove('active')">&times;</button>
+            </div>
+            <form id="userForm">
+                <div class="form-group">
+                    <label for="userUsername">Username *</label>
+                    <input type="text" id="userUsername" required minlength="3" maxlength="30">
+                </div>
+                <div class="form-group">
+                    <label for="userPassword">Password *</label>
+                    <input type="password" id="userPassword" required minlength="6">
+                </div>
+                <div class="form-group">
+                    <label for="userFullName">Nome Completo</label>
+                    <input type="text" id="userFullName">
+                </div>
+                <div class="form-group">
+                    <label for="userEmail">Email</label>
+                    <input type="email" id="userEmail">
+                </div>
+                <div class="form-group">
+                    <label for="userRole">Ruolo *</label>
+                    <select id="userRole" required>
+                        <option value="user">Utente</option>
+                        <option value="admin">Amministratore</option>
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('userModal').classList.remove('active')">Annulla</button>
+                    <button type="submit" class="btn btn-primary">Salva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Scripts: ORDINE CRITICO! -->
     <!-- 1. Configurazione -->
     <script src="js/config.js"></script>
     
-    <!-- 2. Core Architecture (NUOVO!) -->
+    <!-- 2. Core Architecture -->
     <script src="js/core/EventBus.js"></script>
     <script src="js/core/Router.js"></script>
     
@@ -355,6 +421,7 @@
     <script src="js/modules/tasks.js"></script>
     <script src="js/modules/notes.js"></script>
     <script src="js/modules/documents.js"></script>
+    <script src="js/modules/users-management.js"></script>
     
     <!-- 6. App principale (ultimo!) -->
     <script src="js/app.js"></script>
