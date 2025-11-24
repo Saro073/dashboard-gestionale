@@ -205,20 +205,30 @@ function updateStats() {
 // ==================== CONTACTS MANAGEMENT ====================
 let editingContactId = null;
 
+// Funzione unificata per il rendering dei contatti
 function renderContacts(filter = 'all', searchTerm = '') {
   const container = document.getElementById('contactsList');
+  const isListView = container.classList.contains('items-list-view');
+  
   let filteredContacts = contacts;
 
+  // Filtro per categoria
   if (filter !== 'all') {
     filteredContacts = filteredContacts.filter(c => c.category === filter);
   }
 
+  // Filtro per ricerca
   if (searchTerm) {
     filteredContacts = filteredContacts.filter(c =>
       c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (c.email && c.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (c.company && c.company.toLowerCase().includes(searchTerm.toLowerCase()))
     );
+  }
+
+  // Ordinamento alfabetico per vista lista
+  if (isListView) {
+    filteredContacts = [...filteredContacts].sort((a, b) => a.name.localeCompare(b.name));
   }
 
   if (filteredContacts.length === 0) {
@@ -232,6 +242,7 @@ function renderContacts(filter = 'all', searchTerm = '') {
       ${contact.email ? `<p>📧 ${contact.email}</p>` : ''}
       ${contact.phone ? `<p>📞 ${contact.phone}</p>` : ''}
       ${contact.company ? `<p>🏢 ${contact.company}</p>` : ''}
+      ${contact.notes ? `<p class="contact-notes">📝 ${contact.notes}</p>` : ''}
       <div class="item-meta">
         <span class="item-badge badge-${contact.category}">${contact.category}</span>
       </div>
@@ -241,44 +252,6 @@ function renderContacts(filter = 'all', searchTerm = '') {
       </div>
     </div>
   `).join('');
-}
-
-function renderContactsSorted(sortedContacts, filter = 'all', searchTerm = '') {
-    const container = document.getElementById('contactsList');
-    let filteredContacts = sortedContacts;
-
-    if (filter !== 'all') {
-        filteredContacts = filteredContacts.filter(c => c.category === filter);
-    }
-
-    if (searchTerm) {
-        filteredContacts = filteredContacts.filter(c =>
-            c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (c.email && c.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-            (c.company && c.company.toLowerCase().includes(searchTerm.toLowerCase()))
-        );
-    }
-
-    if (filteredContacts.length === 0) {
-        container.innerHTML = '<p class="empty-state">Nessun contatto trovato</p>';
-        return;
-    }
-
-    container.innerHTML = filteredContacts.map(contact => `
-        <div class="item-card">
-            <h3>${contact.name}</h3>
-            ${contact.email ? `<p>📧 ${contact.email}</p>` : ''}
-            ${contact.phone ? `<p>📞 ${contact.phone}</p>` : ''}
-            ${contact.company ? `<p>🏢 ${contact.company}</p>` : ''}
-            <div class="item-meta">
-                <span class="item-badge badge-${contact.category}">${contact.category}</span>
-            </div>
-            <div class="item-actions">
-                <button class="btn btn-sm btn-secondary" onclick="editContact(${contact.id})">Modifica</button>
-                <button class="btn btn-sm btn-danger" onclick="deleteContact(${contact.id})">Elimina</button>
-            </div>
-        </div>
-    `).join('');
 }
 
 function addContact(contactData) {
@@ -311,7 +284,7 @@ function editContact(id) {
     document.getElementById('contactPhone').value = contact.phone || '';
     document.getElementById('contactCompany').value = contact.company || '';
     document.getElementById('contactCategory').value = contact.category;
-            document.getElementById('contactNotes').value = contact.notes || '';
+    document.getElementById('contactNotes').value = contact.notes || '';
     openModal('contactModal');
   }
 }
@@ -582,7 +555,7 @@ document.addEventListener('DOMContentLoaded', () => {
       phone: document.getElementById('contactPhone').value,
       company: document.getElementById('contactCompany').value,
       category: document.getElementById('contactCategory').value,
-                  notes: document.getElementById('contactNotes').value
+      notes: document.getElementById('contactNotes').value
     };
 
     if (editingContactId) {
@@ -596,7 +569,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // View toggle for contacts
-document.getElementById('gridViewBtn').addEventListener('click', () => {
+  document.getElementById('gridViewBtn').addEventListener('click', () => {
     document.getElementById('gridViewBtn').classList.add('active');
     document.getElementById('listViewBtn').classList.remove('active');
     const container = document.getElementById('contactsList');
@@ -605,9 +578,9 @@ document.getElementById('gridViewBtn').addEventListener('click', () => {
     const filter = document.getElementById('contactFilter').value;
     const search = document.getElementById('contactSearch').value;
     renderContacts(filter, search);
-});
+  });
 
-document.getElementById('listViewBtn').addEventListener('click', () => {
+  document.getElementById('listViewBtn').addEventListener('click', () => {
     document.getElementById('listViewBtn').classList.add('active');
     document.getElementById('gridViewBtn').classList.remove('active');
     const container = document.getElementById('contactsList');
@@ -615,10 +588,8 @@ document.getElementById('listViewBtn').addEventListener('click', () => {
     container.classList.add('items-list-view');
     const filter = document.getElementById('contactFilter').value;
     const search = document.getElementById('contactSearch').value;
-    // Sort contacts alphabetically by name
-    const sortedContacts = [...contacts].sort((a, b) => a.name.localeCompare(b.name));
-    renderContactsSorted(sortedContacts, filter, search);
-});
+    renderContacts(filter, search);
+  });
 
   // Task management
   document.getElementById('addTaskBtn').addEventListener('click', () => {
