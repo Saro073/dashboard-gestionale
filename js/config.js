@@ -2,7 +2,7 @@
 
 const CONFIG = {
   // Versione applicazione
-  APP_VERSION: '2.0.0',
+  APP_VERSION: '2.1.0',
   APP_NAME: 'Dashboard Gestionale Ferienwohnung',
   
   // Storage keys
@@ -65,7 +65,8 @@ const CONFIG = {
   NOTE_CATEGORIES: {
     LAVORO: 'lavoro',
     PERSONALE: 'personale',
-    IDEE: 'idee'
+    IDEE: 'idee',
+    GENERALE: 'generale'
   },
   
   // Categorie documenti
@@ -83,7 +84,9 @@ const CONFIG = {
     CREATE: 'create',
     UPDATE: 'update',
     DELETE: 'delete',
-    VIEW: 'view'
+    VIEW: 'view',
+    DOWNLOAD: 'download',
+    UPLOAD: 'upload'
   },
   
   // Entità per activity log
