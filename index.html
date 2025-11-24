@@ -35,23 +35,23 @@
                 <span id="userDisplay" class="user-badge"></span>
             </div>
             <nav class="sidebar-nav">
-                <a href="#" class="nav-item active" data-section="overview">
+                <a href="#overview" class="nav-item active" data-section="overview">
                     <span class="nav-icon">📊</span>
                     <span>Overview</span>
                 </a>
-                <a href="#" class="nav-item" data-section="contacts">
+                <a href="#contacts" class="nav-item" data-section="contacts">
                     <span class="nav-icon">👥</span>
                     <span>Contatti</span>
                 </a>
-                <a href="#" class="nav-item" data-section="tasks">
+                <a href="#tasks" class="nav-item" data-section="tasks">
                     <span class="nav-icon">✓</span>
                     <span>Task</span>
                 </a>
-                <a href="#" class="nav-item" data-section="notes">
+                <a href="#notes" class="nav-item" data-section="notes">
                     <span class="nav-icon">📝</span>
                     <span>Note</span>
                 </a>
-                <a href="#" class="nav-item" data-section="documents">
+                <a href="#documents" class="nav-item" data-section="documents">
                     <span class="nav-icon">📄</span>
                     <span>Documenti</span>
                 </a>
@@ -147,11 +147,13 @@
             <!-- Notes Section -->
             <div id="notesSection" class="content-section">
                 <div class="section-toolbar">
+                    <input type="text" id="noteSearch" class="form-control" placeholder="Cerca note...">
                     <select id="noteFilter" class="form-control">
                         <option value="all">Tutte</option>
                         <option value="lavoro">Lavoro</option>
                         <option value="personale">Personale</option>
                         <option value="idee">Idee</option>
+                        <option value="generale">Generale</option>
                     </select>
                     <button id="addNoteBtn" class="btn btn-primary">+ Nuova Nota</button>
                 </div>
@@ -163,6 +165,7 @@
             <!-- Documents Section -->
             <div id="documentsSection" class="content-section">
                 <div class="section-toolbar">
+                    <input type="text" id="documentSearch" class="form-control" placeholder="Cerca documenti...">
                     <select id="documentFilter" class="form-control">
                         <option value="all">Tutti</option>
                         <option value="contratti">Contratti</option>
@@ -261,25 +264,99 @@
         </div>
     </div>
 
+    <!-- Note Modal -->
+    <div id="noteModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Nuova Nota</h2>
+                <button class="modal-close" onclick="document.getElementById('noteModal').classList.remove('active')">&times;</button>
+            </div>
+            <form id="noteForm">
+                <div class="form-group">
+                    <label for="noteTitle">Titolo *</label>
+                    <input type="text" id="noteTitle" required>
+                </div>
+                <div class="form-group">
+                    <label for="noteContent">Contenuto *</label>
+                    <textarea id="noteContent" rows="6" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="noteCategory">Categoria</label>
+                    <select id="noteCategory">
+                        <option value="generale">Generale</option>
+                        <option value="lavoro">Lavoro</option>
+                        <option value="personale">Personale</option>
+                        <option value="idee">Idee</option>
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('noteModal').classList.remove('active')">Annulla</button>
+                    <button type="submit" class="btn btn-primary">Salva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Document Modal -->
+    <div id="documentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Carica Documento</h2>
+                <button class="modal-close" onclick="document.getElementById('documentModal').classList.remove('active')">&times;</button>
+            </div>
+            <form id="documentForm">
+                <div class="form-group">
+                    <label for="documentFile">File *</label>
+                    <input type="file" id="documentFile" required>
+                    <small>Max 5MB - Formati: PDF, DOC, XLS, PPT, TXT, CSV, IMG, ZIP</small>
+                </div>
+                <div class="form-group">
+                    <label for="documentCategory">Categoria</label>
+                    <select id="documentCategory">
+                        <option value="altro">Altro</option>
+                        <option value="contratti">Contratti</option>
+                        <option value="fatture">Fatture</option>
+                        <option value="reports">Reports</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="documentDescription">Descrizione</label>
+                    <textarea id="documentDescription" rows="2"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('documentModal').classList.remove('active')">Annulla</button>
+                    <button type="submit" class="btn btn-primary">Carica</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Scripts: ORDINE CRITICO! -->
     <!-- 1. Configurazione -->
     <script src="js/config.js"></script>
     
-    <!-- 2. Utility e Storage -->
+    <!-- 2. Core Architecture (NUOVO!) -->
+    <script src="js/core/EventBus.js"></script>
+    <script src="js/core/Router.js"></script>
+    
+    <!-- 3. Services -->
     <script src="js/storage.js"></script>
+    <script src="js/services/NotificationService.js"></script>
     <script src="js/utils.js"></script>
     
-    <!-- 3. Autenticazione -->
+    <!-- 4. Autenticazione -->
     <script src="js/auth/users.js"></script>
     <script src="js/auth/auth.js"></script>
     <script src="js/auth/permissions.js"></script>
     
-    <!-- 4. Moduli -->
+    <!-- 5. Moduli -->
     <script src="js/modules/activity-log.js"></script>
     <script src="js/modules/contacts.js"></script>
     <script src="js/modules/tasks.js"></script>
+    <script src="js/modules/notes.js"></script>
+    <script src="js/modules/documents.js"></script>
     
-    <!-- 5. App principale (ultimo!) -->
+    <!-- 6. App principale (ultimo!) -->
     <script src="js/app.js"></script>
 </body>
 </html>
