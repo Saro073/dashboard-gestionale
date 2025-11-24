@@ -1,5 +1,5 @@
 // ==================== APP ORCHESTRATOR ====================
-// Nuovo orchestratore modulare
+// Orchestratore modulare con nuova architettura
 
 class DashboardApp {
   constructor() {
@@ -10,6 +10,9 @@ class DashboardApp {
    * Inizializzazione applicazione
    */
   init() {
+    // Inizializza servizi core
+    NotificationService.init();
+    
     // Inizializza autenticazione
     AuthManager.init();
     
@@ -22,6 +25,31 @@ class DashboardApp {
     
     // Setup event listeners
     this.setupEventListeners();
+    
+    // Setup EventBus listeners
+    this.setupEventBusListeners();
+  }
+  
+  /**
+   * Setup EventBus listeners per aggiornamenti reattivi
+   */
+  setupEventBusListeners() {
+    // Ricarica statistiche quando cambiano i dati
+    EventBus.on(EVENTS.CONTACT_CREATED, () => this.updateStats());
+    EventBus.on(EVENTS.CONTACT_DELETED, () => this.updateStats());
+    EventBus.on(EVENTS.TASK_CREATED, () => this.updateStats());
+    EventBus.on(EVENTS.TASK_DELETED, () => this.updateStats());
+    EventBus.on(EVENTS.TASK_COMPLETED, () => this.updateStats());
+    EventBus.on(EVENTS.NOTE_CREATED, () => this.updateStats());
+    EventBus.on(EVENTS.NOTE_DELETED, () => this.updateStats());
+    EventBus.on(EVENTS.DOCUMENT_UPLOADED, () => this.updateStats());
+    EventBus.on(EVENTS.DOCUMENT_DELETED, () => this.updateStats());
+    
+    // Aggiorna attività recenti
+    EventBus.on(EVENTS.CONTACT_CREATED, () => this.renderRecentActivity());
+    EventBus.on(EVENTS.TASK_CREATED, () => this.renderRecentActivity());
+    EventBus.on(EVENTS.NOTE_CREATED, () => this.renderRecentActivity());
+    EventBus.on(EVENTS.DOCUMENT_UPLOADED, () => this.renderRecentActivity());
   }
   
   /**
@@ -42,12 +70,18 @@ class DashboardApp {
     const user = AuthManager.getCurrentUser();
     document.getElementById('userDisplay').textContent = user.fullName || user.username;
     
-    // Carica dati
+    // Inizializza router
+    Router.init();
+    
+    // Carica dati e render
     this.loadData();
     this.renderAll();
     
     // Aggiorna UI basata su permessi
     this.updateUIPermissions();
+    
+    // Mostra notifica di benvenuto
+    NotificationService.success(`Benvenuto, ${user.fullName || user.username}!`);
   }
   
   /**
@@ -70,11 +104,12 @@ class DashboardApp {
       this.toggleTheme();
     });
     
-    // Navigation
+    // Navigation - usa Router invece di switchSection manuale
     document.querySelectorAll('.nav-item').forEach(item => {
       item.addEventListener('click', (e) => {
         e.preventDefault();
-        this.switchSection(item.dataset.section);
+        const section = item.dataset.section;
+        Router.navigate(section);
       });
     });
     
@@ -83,6 +118,12 @@ class DashboardApp {
     
     // Tasks
     this.setupTasksListeners();
+    
+    // Notes
+    this.setupNotesListeners();
+    
+    // Documents
+    this.setupDocumentsListeners();
   }
   
   /**
@@ -100,6 +141,7 @@ class DashboardApp {
       const errorDiv = document.getElementById('loginError');
       errorDiv.textContent = result.message;
       errorDiv.style.display = 'block';
+      NotificationService.error(result.message);
     }
   }
   
@@ -108,6 +150,7 @@ class DashboardApp {
    */
   handleLogout() {
     AuthManager.logout();
+    NotificationService.info('Logout effettuato');
     this.showLogin();
   }
   
@@ -125,6 +168,8 @@ class DashboardApp {
     this.updateStats();
     this.renderContacts();
     this.renderTasks();
+    this.renderNotes();
+    this.renderDocuments();
     this.renderRecentActivity();
   }
   
@@ -134,11 +179,13 @@ class DashboardApp {
   updateStats() {
     const contactsStats = ContactsModule.getStats();
     const tasksStats = TasksModule.getStats();
+    const notesStats = NotesModule.getStats();
+    const documentsStats = DocumentsModule.getStats();
     
     document.getElementById('contactsCount').textContent = contactsStats.total;
     document.getElementById('tasksCount').textContent = tasksStats.active;
-    document.getElementById('notesCount').textContent = '0'; // TODO: notes module
-    document.getElementById('documentsCount').textContent = '0'; // TODO: documents module
+    document.getElementById('notesCount').textContent = notesStats.total;
+    document.getElementById('documentsCount').textContent = documentsStats.total;
   }
   
   /**
@@ -146,9 +193,6 @@ class DashboardApp {
    */
   renderContacts() {
     const container = document.getElementById('contactsList');
-    const contacts = ContactsModule.getAll();
-    
-    // Apply filters
     const filter = document.getElementById('contactFilter').value;
     const search = document.getElementById('contactSearch').value;
     
@@ -219,6 +263,88 @@ class DashboardApp {
   }
   
   /**
+   * Render note
+   */
+  renderNotes() {
+    const container = document.getElementById('notesList');
+    const filter = document.getElementById('noteFilter').value;
+    const search = document.getElementById('noteSearch').value;
+    
+    let filtered = NotesModule.filterByCategory(filter);
+    if (search) {
+      filtered = NotesModule.search(search);
+    }
+    
+    // Filtra per permessi
+    filtered = PermissionsManager.filterViewable(filtered, 'note');
+    
+    if (filtered.length === 0) {
+      container.innerHTML = '<p class="empty-state">Nessuna nota trovata</p>';
+      return;
+    }
+    
+    container.innerHTML = filtered.map(note => `
+      <div class="item-card note-card">
+        <h3>${Utils.escapeHtml(note.title)}</h3>
+        <p class="note-content">${Utils.escapeHtml(note.content.substring(0, 150))}${note.content.length > 150 ? '...' : ''}</p>
+        <div class="item-meta">
+          <span class="item-badge badge-${note.category}">${note.category}</span>
+          ${note.pinned ? '<span>📌 Pinned</span>' : ''}
+          <span class="activity-time">${Utils.formatDate(note.createdAt)}</span>
+        </div>
+        <div class="item-actions">
+          <button class="btn btn-sm btn-secondary" onclick="app.togglePinNote(${note.id})">
+            ${note.pinned ? 'Unpin' : 'Pin'}
+          </button>
+          ${PermissionsManager.canEditNote(note) ? 
+            `<button class="btn btn-sm btn-secondary" onclick="app.editNote(${note.id})">Modifica</button>` : ''}
+          ${PermissionsManager.canDeleteNote(note) ?
+            `<button class="btn btn-sm btn-danger" onclick="app.deleteNote(${note.id})">Elimina</button>` : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+  
+  /**
+   * Render documenti
+   */
+  renderDocuments() {
+    const container = document.getElementById('documentsList');
+    const filter = document.getElementById('documentFilter').value;
+    const search = document.getElementById('documentSearch').value;
+    
+    let filtered = DocumentsModule.filterByCategory(filter);
+    if (search) {
+      filtered = DocumentsModule.search(search);
+    }
+    
+    if (filtered.length === 0) {
+      container.innerHTML = '<p class="empty-state">Nessun documento trovato</p>';
+      return;
+    }
+    
+    container.innerHTML = filtered.map(doc => `
+      <div class="document-item">
+        <div class="document-icon">${DocumentsModule.getFileIcon(doc.extension)}</div>
+        <div class="document-content">
+          <h4>${Utils.escapeHtml(doc.name)}</h4>
+          <p>${doc.description ? Utils.escapeHtml(doc.description) : ''}</p>
+          <div class="item-meta">
+            <span class="item-badge badge-${doc.category}">${doc.category}</span>
+            <span>${doc.sizeFormatted}</span>
+            <span class="activity-time">${Utils.formatDate(doc.uploadedAt)}</span>
+          </div>
+        </div>
+        <div class="item-actions">
+          <button class="btn btn-sm btn-primary" onclick="app.downloadDocument(${doc.id})">Download</button>
+          ${PermissionsManager.canDeleteDocument(doc) ?
+            `<button class="btn btn-sm btn-danger" onclick="app.deleteDocument(${doc.id})">Elimina</button>` : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+  
+  /**
    * Render attività recenti
    */
   renderRecentActivity() {
@@ -246,9 +372,8 @@ class DashboardApp {
     }).join('');
   }
   
-  /**
-   * Gestione contatti
-   */
+  // ==================== CONTACTS LISTENERS ====================
+  
   setupContactsListeners() {
     document.getElementById('addContactBtn').addEventListener('click', () => {
       this.openContactModal();
@@ -268,9 +393,40 @@ class DashboardApp {
     });
   }
   
-  /**
-   * Gestione task
-   */
+  openContactModal() { 
+    document.getElementById('contactModal').classList.add('active');
+    EventBus.emit(EVENTS.MODAL_OPENED, { modal: 'contact' });
+  }
+  
+  editContact(id) { /* TODO: Implementare edit */ }
+  
+  deleteContact(id) {
+    if (confirm('Elimina questo contatto?')) {
+      ContactsModule.delete(id);
+      this.renderContacts();
+    }
+  }
+  
+  saveContact() {
+    const data = {
+      name: document.getElementById('contactName').value,
+      email: document.getElementById('contactEmail').value,
+      phone: document.getElementById('contactPhone').value,
+      company: document.getElementById('contactCompany').value,
+      category: document.getElementById('contactCategory').value,
+      notes: document.getElementById('contactNotes').value
+    };
+    
+    const result = ContactsModule.create(data);
+    if (result.success) {
+      document.getElementById('contactModal').classList.remove('active');
+      document.getElementById('contactForm').reset();
+      this.renderContacts();
+    }
+  }
+  
+  // ==================== TASKS LISTENERS ====================
+  
   setupTasksListeners() {
     document.getElementById('addTaskBtn').addEventListener('click', () => {
       this.openTaskModal();
@@ -286,25 +442,161 @@ class DashboardApp {
     });
   }
   
-  /**
-   * Switch section
-   */
-  switchSection(sectionName) {
-    document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-    document.querySelector(`[data-section="${sectionName}"]`).classList.add('active');
-    
-    document.querySelectorAll('.content-section').forEach(section => section.classList.remove('active'));
-    document.getElementById(`${sectionName}Section`).classList.add('active');
-    
-    const titles = { overview: 'Overview', contacts: 'Contatti', tasks: 'Task', notes: 'Note', documents: 'Documenti' };
-    document.getElementById('sectionTitle').textContent = titles[sectionName];
+  openTaskModal() { 
+    document.getElementById('taskModal').classList.add('active');
+    EventBus.emit(EVENTS.MODAL_OPENED, { modal: 'task' });
   }
+  
+  toggleTask(id) {
+    TasksModule.toggleComplete(id);
+    this.renderTasks();
+  }
+  
+  deleteTask(id) {
+    if (confirm('Elimina questo task?')) {
+      TasksModule.delete(id);
+      this.renderTasks();
+    }
+  }
+  
+  saveTask() {
+    const data = {
+      title: document.getElementById('taskTitle').value,
+      description: document.getElementById('taskDescription').value,
+      priority: document.getElementById('taskPriority').value,
+      dueDate: document.getElementById('taskDueDate').value
+    };
+    
+    const result = TasksModule.create(data);
+    if (result.success) {
+      document.getElementById('taskModal').classList.remove('active');
+      document.getElementById('taskForm').reset();
+      this.renderTasks();
+    }
+  }
+  
+  // ==================== NOTES LISTENERS ====================
+  
+  setupNotesListeners() {
+    document.getElementById('addNoteBtn').addEventListener('click', () => {
+      this.openNoteModal();
+    });
+    
+    document.getElementById('noteFilter').addEventListener('change', () => {
+      this.renderNotes();
+    });
+    
+    document.getElementById('noteSearch').addEventListener('input', 
+      Utils.debounce(() => this.renderNotes(), 300)
+    );
+    
+    document.getElementById('noteForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.saveNote();
+    });
+  }
+  
+  openNoteModal() { 
+    document.getElementById('noteModal').classList.add('active');
+    EventBus.emit(EVENTS.MODAL_OPENED, { modal: 'note' });
+  }
+  
+  togglePinNote(id) {
+    NotesModule.togglePin(id);
+    this.renderNotes();
+  }
+  
+  editNote(id) { /* TODO: Implementare edit */ }
+  
+  deleteNote(id) {
+    if (confirm('Elimina questa nota?')) {
+      NotesModule.delete(id);
+      this.renderNotes();
+    }
+  }
+  
+  saveNote() {
+    const data = {
+      title: document.getElementById('noteTitle').value,
+      content: document.getElementById('noteContent').value,
+      category: document.getElementById('noteCategory').value
+    };
+    
+    const result = NotesModule.create(data);
+    if (result.success) {
+      document.getElementById('noteModal').classList.remove('active');
+      document.getElementById('noteForm').reset();
+      this.renderNotes();
+    }
+  }
+  
+  // ==================== DOCUMENTS LISTENERS ====================
+  
+  setupDocumentsListeners() {
+    document.getElementById('addDocumentBtn').addEventListener('click', () => {
+      this.openDocumentModal();
+    });
+    
+    document.getElementById('documentFilter').addEventListener('change', () => {
+      this.renderDocuments();
+    });
+    
+    document.getElementById('documentSearch').addEventListener('input', 
+      Utils.debounce(() => this.renderDocuments(), 300)
+    );
+    
+    document.getElementById('documentForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.saveDocument();
+    });
+  }
+  
+  openDocumentModal() { 
+    document.getElementById('documentModal').classList.add('active');
+    EventBus.emit(EVENTS.MODAL_OPENED, { modal: 'document' });
+  }
+  
+  async saveDocument() {
+    const fileInput = document.getElementById('documentFile');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+      NotificationService.error('Seleziona un file');
+      return;
+    }
+    
+    const metadata = {
+      category: document.getElementById('documentCategory').value,
+      description: document.getElementById('documentDescription').value
+    };
+    
+    NotificationService.info('Caricamento in corso...');
+    
+    const result = await DocumentsModule.upload(file, metadata);
+    if (result.success) {
+      document.getElementById('documentModal').classList.remove('active');
+      document.getElementById('documentForm').reset();
+      this.renderDocuments();
+    }
+  }
+  
+  downloadDocument(id) {
+    DocumentsModule.download(id);
+  }
+  
+  deleteDocument(id) {
+    if (confirm('Elimina questo documento?')) {
+      DocumentsModule.delete(id);
+      this.renderDocuments();
+    }
+  }
+  
+  // ==================== UI UTILITIES ====================
   
   /**
    * Aggiorna UI basata su permessi
    */
   updateUIPermissions() {
-    // Mostra/nascondi elementi basati su permessi
     if (!PermissionsManager.canViewLogs()) {
       const activitySection = document.querySelector('.recent-activity');
       if (activitySection) activitySection.style.display = 'none';
@@ -320,60 +612,9 @@ class DashboardApp {
     document.documentElement.setAttribute('data-theme', newTheme);
     StorageManager.save(CONFIG.STORAGE_KEYS.THEME, newTheme);
     document.getElementById('themeToggle').textContent = newTheme === 'dark' ? '☀️' : '🌓';
-  }
-  
-  // Metodi contatti (semplificati - da completare con modal)
-  openContactModal() { document.getElementById('contactModal').classList.add('active'); }
-  editContact(id) { /* TODO */ }
-  deleteContact(id) {
-    if (confirm('Elimina questo contatto?')) {
-      ContactsModule.delete(id);
-      this.renderContacts();
-      this.updateStats();
-    }
-  }
-  saveContact() {
-    const data = {
-      name: document.getElementById('contactName').value,
-      email: document.getElementById('contactEmail').value,
-      phone: document.getElementById('contactPhone').value,
-      company: document.getElementById('contactCompany').value,
-      category: document.getElementById('contactCategory').value,
-      notes: document.getElementById('contactNotes').value
-    };
-    ContactsModule.create(data);
-    document.getElementById('contactModal').classList.remove('active');
-    document.getElementById('contactForm').reset();
-    this.renderContacts();
-    this.updateStats();
-  }
-  
-  // Metodi task
-  openTaskModal() { document.getElementById('taskModal').classList.add('active'); }
-  toggleTask(id) {
-    TasksModule.toggleComplete(id);
-    this.renderTasks();
-    this.updateStats();
-  }
-  deleteTask(id) {
-    if (confirm('Elimina questo task?')) {
-      TasksModule.delete(id);
-      this.renderTasks();
-      this.updateStats();
-    }
-  }
-  saveTask() {
-    const data = {
-      title: document.getElementById('taskTitle').value,
-      description: document.getElementById('taskDescription').value,
-      priority: document.getElementById('taskPriority').value,
-      dueDate: document.getElementById('taskDueDate').value
-    };
-    TasksModule.create(data);
-    document.getElementById('taskModal').classList.remove('active');
-    document.getElementById('taskForm').reset();
-    this.renderTasks();
-    this.updateStats();
+    
+    EventBus.emit(EVENTS.THEME_CHANGED, { theme: newTheme });
+    NotificationService.info(`Tema ${newTheme === 'dark' ? 'scuro' : 'chiaro'} attivato`);
   }
 }
 
