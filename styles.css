@@ -286,7 +286,7 @@ textarea {
 .btn-secondary {
   background-color: var(--secondary-color);
   color: white;
-    min-width: 90px;
+  min-width: 90px;
   font-weight: 500;
   box-shadow: var(--shadow-sm);
 }
@@ -383,30 +383,30 @@ textarea {
 
 /* View Toggle Buttons */
 .view-toggle-group {
-    display: flex;
-    gap: 0.25rem;
-    margin-left: auto;
+  display: flex;
+  gap: 0.25rem;
+  margin-left: auto;
 }
 
 .view-toggle {
-    padding: 0.5rem;
-    min-width: 40px;
-    font-size: 1rem;
-    border: 1px solid var(--border-color);
-    background-color: var(--surface-color);
-    color: var(--text-secondary);
-    transition: all 0.2s;
+  padding: 0.5rem;
+  min-width: 40px;
+  font-size: 1rem;
+  border: 1px solid var(--border-color);
+  background-color: var(--surface-color);
+  color: var(--text-secondary);
+  transition: all 0.2s;
 }
 
 .view-toggle.active {
-    background-color: var(--primary-color);
-    color: white;
-    border-color: var(--primary-color);
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
 }
 
 .view-toggle:hover:not(.active) {
-    background-color: var(--border-color);
-    color: var(--text-primary);
+  background-color: var(--border-color);
+  color: var(--text-primary);
 }
 
 /* Items Grid/List */
@@ -424,28 +424,28 @@ textarea {
 
 /* List View Styles */
 .items-list-view {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .items-list-view .item-card {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    padding: 0.75rem 1rem;
-    margin: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  margin: 0;
 }
 
 .items-list-view .item-card h3 {
-    margin: 0;
-    font-size: 1rem;
-    flex: 1;
+  margin: 0;
+  font-size: 1rem;
+  flex: 1;
 }
 
 .items-list-view .item-card p {
-    margin: 0 1rem 0 0;
-    font-size: 0.875rem;
+  margin: 0 1rem 0 0;
+  font-size: 0.875rem;
 }
 
 .item-card {
@@ -470,6 +470,17 @@ textarea {
   color: var(--text-secondary);
   font-size: 0.875rem;
   margin-bottom: 0.5rem;
+}
+
+/* Stile specifico per le note dei contatti */
+.contact-notes {
+  font-style: italic;
+  color: var(--text-muted);
+  background-color: var(--bg-color);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--primary-color);
+  margin-top: 0.5rem;
 }
 
 .item-meta {
@@ -622,6 +633,7 @@ textarea {
   z-index: 1000;
   align-items: center;
   justify-content: center;
+  padding: 1rem;
 }
 
 .modal.active {
@@ -631,12 +643,14 @@ textarea {
 .modal-content {
   background: var(--surface-color);
   border-radius: var(--radius-lg);
-  width: 90%;
-  max-width: 500px;
-  max-height: 90vh;
+  width: 100%;
+  max-width: 540px;
+  max-height: 85vh;
   overflow-y: auto;
   box-shadow: var(--shadow-lg);
   animation: modalSlideIn 0.3s ease;
+  display: flex;
+  flex-direction: column;
 }
 
 @keyframes modalSlideIn {
@@ -654,12 +668,15 @@ textarea {
   display: flex;
   justify-content: space-between;
   align-items: center;
-    padding: 2rem 1.5rem;  border-bottom: 1px solid var(--border-color);
+  padding: 1.5rem 1.75rem;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
 }
 
 .modal-header h2 {
   margin: 0;
   font-size: 1.25rem;
+  font-weight: 600;
 }
 
 .modal-close {
@@ -676,6 +693,7 @@ textarea {
   justify-content: center;
   border-radius: var(--radius-sm);
   transition: background-color 0.2s;
+  flex-shrink: 0;
 }
 
 .modal-close:hover {
@@ -683,34 +701,54 @@ textarea {
 }
 
 .modal-content form {
-  padding: 1.5rem;
+  padding: 1.75rem;
+  flex: 1;
+  overflow-y: auto;
 }
 
 .modal-footer {
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
-  padding-top: 1rem;
-  margin-top: 1rem;
+  padding-top: 1.25rem;
+  margin-top: 1.25rem;
   border-top: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+/* Pulsanti modale uniformati */
+.modal-footer .btn {
+  min-width: 100px;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  padding: 0.625rem 1.5rem;
+  transition: all 0.2s ease;
 }
 
 .modal-footer .btn-secondary {
-    background-color: #f1f5f9;
-    color: var(--text-primary);
-    border: 1px solid var(--border-color);
-    min-width: 90px;
-    font-weight: 500;
+  background-color: #f1f5f9;
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
 }
 
 .modal-footer .btn-secondary:hover {
-    background-color: #e2e8f0;
-    border-color: var(--secondary-color);
+  background-color: #e2e8f0;
+  border-color: var(--text-secondary);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .modal-footer .btn-primary {
-    min-width: 90px;
-    font-weight: 500;
+  background-color: var(--primary-color);
+  color: white;
+  border: 1px solid var(--primary-color);
+}
+
+.modal-footer .btn-primary:hover {
+  background-color: var(--primary-hover);
+  border-color: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(37, 99, 235, 0.3);
 }
 
 /* ==================== RESPONSIVE ==================== */
@@ -743,6 +781,19 @@ textarea {
   
   .section-toolbar .form-control {
     width: 100%;
+  }
+  
+  .modal-content {
+    max-width: 95%;
+    max-height: 95vh;
+  }
+  
+  .modal-header {
+    padding: 1.25rem 1.5rem;
+  }
+  
+  .modal-content form {
+    padding: 1.5rem;
   }
 }
 
