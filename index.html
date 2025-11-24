@@ -122,10 +122,6 @@
                         <option value="fornitore">Fornitori</option>
                         <option value="partner">Partner</option>
                     </select>
-                    <div class="view-toggle-group">
-                        <button id="gridViewBtn" class="btn btn-sm btn-secondary view-toggle active" title="Vista griglia">◫</button>
-                        <button id="listViewBtn" class="btn btn-sm btn-secondary view-toggle" title="Vista lista">☰</button>
-                    </div>
                     <button id="addContactBtn" class="btn btn-primary">+ Aggiungi Contatto</button>
                 </div>
                 <div id="contactsList" class="items-grid">
@@ -188,7 +184,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2 id="contactModalTitle">Aggiungi Contatto</h2>
-                <button class="modal-close">&times;</button>
+                <button class="modal-close" onclick="document.getElementById('contactModal').classList.remove('active')">&times;</button>
             </div>
             <form id="contactForm">
                 <div class="form-group">
@@ -221,7 +217,7 @@
                     <textarea id="contactNotes" rows="2"></textarea>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary modal-close">Annulla</button>
+                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('contactModal').classList.remove('active')">Annulla</button>
                     <button type="submit" class="btn btn-primary">Salva</button>
                 </div>
             </form>
@@ -233,7 +229,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Aggiungi Task</h2>
-                <button class="modal-close">&times;</button>
+                <button class="modal-close" onclick="document.getElementById('taskModal').classList.remove('active')">&times;</button>
             </div>
             <form id="taskForm">
                 <div class="form-group">
@@ -258,82 +254,32 @@
                     <input type="date" id="taskDueDate">
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary modal-close">Annulla</button>
+                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('taskModal').classList.remove('active')">Annulla</button>
                     <button type="submit" class="btn btn-primary">Salva</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Note Modal -->
-    <div id="noteModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Nuova Nota</h2>
-                <button class="modal-close">&times;</button>
-            </div>
-            <form id="noteForm">
-                <div class="form-group">
-                    <label for="noteTitle">Titolo *</label>
-                    <input type="text" id="noteTitle" required>
-                </div>
-                <div class="form-group">
-                    <label for="noteContent">Contenuto</label>
-                    <textarea id="noteContent" rows="5"></textarea>
-                </div>
-                <div class="form-group">
-                    <label for="noteCategory">Categoria</label>
-                    <select id="noteCategory">
-                        <option value="lavoro">Lavoro</option>
-                        <option value="personale">Personale</option>
-                        <option value="idee">Idee</option>
-                    </select>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary modal-close">Annulla</button>
-                    <button type="submit" class="btn btn-primary">Salva</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Document Modal -->
-    <div id="documentModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Carica Documento</h2>
-                <button class="modal-close">&times;</button>
-            </div>
-            <form id="documentForm">
-                <div class="form-group">
-                    <label for="documentName">Nome Documento *</label>
-                    <input type="text" id="documentName" required>
-                </div>
-                <div class="form-group">
-                    <label for="documentCategory">Categoria</label>
-                    <select id="documentCategory">
-                        <option value="contratti">Contratti</option>
-                        <option value="fatture">Fatture</option>
-                        <option value="reports">Reports</option>
-                        <option value="altro">Altro</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="documentFile">File</label>
-                    <input type="file" id="documentFile">
-                </div>
-                <div class="form-group">
-                    <label for="documentNotes">Note</label>
-                    <textarea id="documentNotes" rows="3"></textarea>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary modal-close">Annulla</button>
-                    <button type="submit" class="btn btn-primary">Carica</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <script src="app.js"></script>
+    <!-- Scripts: ORDINE CRITICO! -->
+    <!-- 1. Configurazione -->
+    <script src="js/config.js"></script>
+    
+    <!-- 2. Utility e Storage -->
+    <script src="js/storage.js"></script>
+    <script src="js/utils.js"></script>
+    
+    <!-- 3. Autenticazione -->
+    <script src="js/auth/users.js"></script>
+    <script src="js/auth/auth.js"></script>
+    <script src="js/auth/permissions.js"></script>
+    
+    <!-- 4. Moduli -->
+    <script src="js/modules/activity-log.js"></script>
+    <script src="js/modules/contacts.js"></script>
+    <script src="js/modules/tasks.js"></script>
+    
+    <!-- 5. App principale (ultimo!) -->
+    <script src="js/app.js"></script>
 </body>
 </html>
