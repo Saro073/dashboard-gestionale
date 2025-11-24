@@ -404,10 +404,3 @@ const UsersManagementModule = {
     return result;
   }
 };
-
-// Aggiungi eventi per gestione utenti
-if (typeof EVENTS !== 'undefined') {
-  EVENTS.USER_CREATED = 'user:created';
-  EVENTS.USER_UPDATED = 'user:updated';
-  EVENTS.USER_DELETED = 'user:deleted';
-}
