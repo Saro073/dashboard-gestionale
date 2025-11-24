@@ -136,6 +136,11 @@ const EVENTS = {
   USER_LOGOUT: 'user:logout',
   AUTH_CHANGE: 'auth:change',
 
+  // Gestione Utenti
+  USER_CREATED: 'user:created',
+  USER_UPDATED: 'user:updated',
+  USER_DELETED: 'user:deleted',
+
   // Contatti
   CONTACT_CREATED: 'contact:created',
   CONTACT_UPDATED: 'contact:updated',
