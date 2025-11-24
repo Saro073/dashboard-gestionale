@@ -44,12 +44,16 @@ class DashboardApp {
     EventBus.on(EVENTS.NOTE_DELETED, () => this.updateStats());
     EventBus.on(EVENTS.DOCUMENT_UPLOADED, () => this.updateStats());
     EventBus.on(EVENTS.DOCUMENT_DELETED, () => this.updateStats());
+    EventBus.on(EVENTS.USER_CREATED, () => this.renderUsers());
+    EventBus.on(EVENTS.USER_UPDATED, () => this.renderUsers());
+    EventBus.on(EVENTS.USER_DELETED, () => this.renderUsers());
     
     // Aggiorna attività recenti
     EventBus.on(EVENTS.CONTACT_CREATED, () => this.renderRecentActivity());
     EventBus.on(EVENTS.TASK_CREATED, () => this.renderRecentActivity());
     EventBus.on(EVENTS.NOTE_CREATED, () => this.renderRecentActivity());
     EventBus.on(EVENTS.DOCUMENT_UPLOADED, () => this.renderRecentActivity());
+    EventBus.on(EVENTS.USER_CREATED, () => this.renderRecentActivity());
   }
   
   /**
@@ -124,6 +128,11 @@ class DashboardApp {
     
     // Documents
     this.setupDocumentsListeners();
+    
+    // Users (solo se admin)
+    if (PermissionsManager.canCreateUsers()) {
+      this.setupUsersListeners();
+    }
   }
   
   /**
@@ -171,6 +180,11 @@ class DashboardApp {
     this.renderNotes();
     this.renderDocuments();
     this.renderRecentActivity();
+    
+    // Render users solo se admin
+    if (PermissionsManager.canCreateUsers()) {
+      this.renderUsers();
+    }
   }
   
   /**
@@ -339,6 +353,65 @@ class DashboardApp {
           <button class="btn btn-sm btn-primary" onclick="app.downloadDocument(${doc.id})">Download</button>
           ${PermissionsManager.canDeleteDocument(doc) ?
             `<button class="btn btn-sm btn-danger" onclick="app.deleteDocument(${doc.id})">Elimina</button>` : ''}
+        </div>
+      </div>
+    `).join(''); 
+  }
+  
+  /**
+   * Render utenti (solo admin)
+   */
+  renderUsers() {
+    if (!PermissionsManager.canCreateUsers()) return;
+    
+    const container = document.getElementById('usersList');
+    const roleFilter = document.getElementById('userRoleFilter')?.value || 'all';
+    const statusFilter = document.getElementById('userStatusFilter')?.value || 'all';
+    const search = document.getElementById('userSearch')?.value || '';
+    
+    let filtered = UsersManagementModule.getAll();
+    
+    // Filtra per ruolo
+    if (roleFilter !== 'all') {
+      filtered = UsersManagementModule.filterByRole(roleFilter);
+    }
+    
+    // Filtra per stato
+    if (statusFilter !== 'all') {
+      filtered = UsersManagementModule.filterByStatus(statusFilter === 'true');
+    }
+    
+    // Cerca
+    if (search) {
+      filtered = UsersManagementModule.search(search);
+    }
+    
+    if (filtered.length === 0) {
+      container.innerHTML = '<p class="empty-state">Nessun utente trovato</p>';
+      return;
+    }
+    
+    container.innerHTML = filtered.map(user => `
+      <div class="user-item">
+        <div class="user-avatar">
+          <span class="user-initial">${user.username.charAt(0).toUpperCase()}</span>
+        </div>
+        <div class="user-content">
+          <h4>${Utils.escapeHtml(user.username)}</h4>
+          ${user.fullName ? `<p>👤 ${Utils.escapeHtml(user.fullName)}</p>` : ''}
+          ${user.email ? `<p>📧 ${Utils.escapeHtml(user.email)}</p>` : ''}
+          <div class="item-meta">
+            <span class="item-badge badge-${user.role}">${user.role === 'admin' ? 'Amministratore' : 'Utente'}</span>
+            <span class="item-badge badge-${user.active ? 'active' : 'inactive'}">${user.active ? 'Attivo' : 'Disattivato'}</span>
+            <span class="activity-time">${Utils.formatDate(user.createdAt)}</span>
+          </div>
+        </div>
+        <div class="item-actions">
+          <button class="btn btn-sm btn-secondary" onclick="app.toggleUserActive(${user.id})">
+            ${user.active ? 'Disattiva' : 'Attiva'}
+          </button>
+          <button class="btn btn-sm btn-secondary" onclick="app.editUser(${user.id})">Modifica</button>
+          <button class="btn btn-sm btn-danger" onclick="app.deleteUser(${user.id})">Elimina</button>
         </div>
       </div>
     `).join('');
@@ -591,15 +664,142 @@ class DashboardApp {
     }
   }
   
+  // ==================== USERS LISTENERS ====================
+  
+  setupUsersListeners() {
+    const addBtn = document.getElementById('addUserBtn');
+    if (addBtn) {
+      addBtn.addEventListener('click', () => {
+        this.openUserModal();
+      });
+    }
+    
+    const roleFilter = document.getElementById('userRoleFilter');
+    if (roleFilter) {
+      roleFilter.addEventListener('change', () => {
+        this.renderUsers();
+      });
+    }
+    
+    const statusFilter = document.getElementById('userStatusFilter');
+    if (statusFilter) {
+      statusFilter.addEventListener('change', () => {
+        this.renderUsers();
+      });
+    }
+    
+    const search = document.getElementById('userSearch');
+    if (search) {
+      search.addEventListener('input', 
+        Utils.debounce(() => this.renderUsers(), 300)
+      );
+    }
+    
+    const form = document.getElementById('userForm');
+    if (form) {
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        this.saveUser();
+      });
+    }
+  }
+  
+  openUserModal() { 
+    document.getElementById('userModal').classList.add('active');
+    document.getElementById('userModalTitle').textContent = 'Nuovo Utente';
+    document.getElementById('userForm').reset();
+    EventBus.emit(EVENTS.MODAL_OPENED, { modal: 'user' });
+  }
+  
+  saveUser() {
+    const data = {
+      username: document.getElementById('userUsername').value,
+      password: document.getElementById('userPassword').value,
+      fullName: document.getElementById('userFullName').value,
+      email: document.getElementById('userEmail').value,
+      role: document.getElementById('userRole').value
+    };
+    
+    const result = UsersManagementModule.create(data);
+    if (result.success) {
+      document.getElementById('userModal').classList.remove('active');
+      document.getElementById('userForm').reset();
+      this.renderUsers();
+    }
+  }
+  
+  editUser(id) {
+    const user = UsersManagementModule.getById(id);
+    if (!user) return;
+    
+    document.getElementById('userModalTitle').textContent = 'Modifica Utente';
+    document.getElementById('userUsername').value = user.username;
+    document.getElementById('userFullName').value = user.fullName || '';
+    document.getElementById('userEmail').value = user.email || '';
+    document.getElementById('userRole').value = user.role;
+    document.getElementById('userPassword').value = '';
+    document.getElementById('userPassword').placeholder = 'Lascia vuoto per non modificare';
+    document.getElementById('userPassword').required = false;
+    
+    document.getElementById('userModal').classList.add('active');
+    
+    // Cambia form submit per update
+    const form = document.getElementById('userForm');
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      const updates = {
+        username: document.getElementById('userUsername').value,
+        fullName: document.getElementById('userFullName').value,
+        email: document.getElementById('userEmail').value,
+        role: document.getElementById('userRole').value
+      };
+      
+      const pwd = document.getElementById('userPassword').value;
+      if (pwd) updates.password = pwd;
+      
+      const result = UsersManagementModule.update(id, updates);
+      if (result.success) {
+        document.getElementById('userModal').classList.remove('active');
+        document.getElementById('userForm').reset();
+        document.getElementById('userPassword').required = true;
+        document.getElementById('userPassword').placeholder = '';
+        form.onsubmit = null;
+        this.renderUsers();
+      }
+    };
+  }
+  
+  deleteUser(id) {
+    if (confirm('Elimina questo utente? L\'operazione è irreversibile.')) {
+      UsersManagementModule.delete(id);
+      this.renderUsers();
+    }
+  }
+  
+  toggleUserActive(id) {
+    UsersManagementModule.toggleActive(id);
+    this.renderUsers();
+  }
+  
   // ==================== UI UTILITIES ====================
   
   /**
    * Aggiorna UI basata su permessi
    */
   updateUIPermissions() {
+    // Nascondi activity log se non hai permessi
     if (!PermissionsManager.canViewLogs()) {
       const activitySection = document.querySelector('.recent-activity');
       if (activitySection) activitySection.style.display = 'none';
+    }
+    
+    // Mostra sezione utenti solo ad admin
+    if (PermissionsManager.canCreateUsers()) {
+      const usersNavItem = document.getElementById('usersNavItem');
+      if (usersNavItem) usersNavItem.style.display = 'block';
+      
+      const usersSection = document.getElementById('usersSection');
+      if (usersSection) usersSection.style.display = 'none'; // Nascosto fino a navigazione
     }
   }
   
