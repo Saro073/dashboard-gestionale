@@ -165,6 +165,12 @@ const EVENTS = {
   DOCUMENT_DELETED: 'document:deleted',
   DOCUMENTS_LOADED: 'documents:loaded',
 
+  // Prenotazioni
+  BOOKING_CREATED: 'booking:created',
+  BOOKING_UPDATED: 'booking:updated',
+  BOOKING_DELETED: 'booking:deleted',
+  BOOKINGS_LOADED: 'bookings:loaded',
+
   // UI
   SECTION_CHANGED: 'ui:section-changed',
   THEME_CHANGED: 'ui:theme-changed',
