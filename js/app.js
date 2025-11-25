@@ -402,13 +402,13 @@ class DashboardApp {
           ${user.email ? `<p>📧 ${Utils.escapeHtml(user.email)}</p>` : ''}
           <div class="item-meta">
             <span class="item-badge badge-${user.role}">${user.role === 'admin' ? 'Amministratore' : 'Utente'}</span>
-            <span class="item-badge badge-${user.active ? 'active' : 'inactive'}">${user.active ? 'Attivo' : 'Disattivato'}</span>
+            <span class="item-badge badge-${user.isActive ? 'active' : 'inactive'}">${user.isActive ? 'Attivo' : 'Disattivato'}</span>
             <span class="activity-time">${Utils.formatDate(user.createdAt)}</span>
           </div>
         </div>
         <div class="item-actions">
           <button class="btn btn-sm btn-secondary" onclick="app.toggleUserActive(${user.id})">
-            ${user.active ? 'Disattiva' : 'Attiva'}
+            ${user.isActive ? 'Disattiva' : 'Attiva'}
           </button>
           <button class="btn btn-sm btn-secondary" onclick="app.editUser(${user.id})">Modifica</button>
           <button class="btn btn-sm btn-danger" onclick="app.deleteUser(${user.id})">Elimina</button>
