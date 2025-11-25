@@ -798,8 +798,6 @@ class DashboardApp {
       const usersNavItem = document.getElementById('usersNavItem');
       if (usersNavItem) usersNavItem.style.display = 'block';
       
-      const usersSection = document.getElementById('usersSection');
-      if (usersSection) usersSection.style.display = 'none'; // Nascosto fino a navigazione
     }
   }
   
