@@ -272,7 +272,7 @@ const UsersManagementModule = {
       return { success: false, active: false };
     }
     
-    users[index].active = !users[index].active;
+    users[index].isActive = !users[index].isActive;
     users[index].updatedAt = new Date().toISOString();
     
     StorageManager.save(CONFIG.STORAGE_KEYS.USERS, users);
@@ -280,12 +280,12 @@ const UsersManagementModule = {
     EventBus.emit(EVENTS.USER_UPDATED, { ...users[index], password: undefined });
     
     NotificationService.info(
-      users[index].active ? 
+      users[index].isActive ? 
       `Utente "${users[index].username}" attivato` : 
       `Utente "${users[index].username}" disattivato`
     );
     
-    return { success: true, active: users[index].active };
+    return { success: true, active: users[index].isActive };
   },
   
   /**
@@ -316,7 +316,7 @@ const UsersManagementModule = {
    */
   filterByStatus(active) {
     const users = this.getAll();
-    return users.filter(u => u.active === active);
+    return users.filter(u => u.isActive === active);
   },
   
   /**
@@ -328,8 +328,8 @@ const UsersManagementModule = {
     
     return {
       total: users.length,
-      active: users.filter(u => u.active).length,
-      inactive: users.filter(u => !u.active).length,
+      active: users.filter(u => u.isActive).length,
+      inactive: users.filter(u => !u.isActive).length,
       byRole: {
         admin: users.filter(u => u.role === CONFIG.ROLES.ADMIN).length,
         user: users.filter(u => u.role === CONFIG.ROLES.USER).length
