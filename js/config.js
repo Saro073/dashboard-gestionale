@@ -14,9 +14,9 @@ const CONFIG = {
     NOTES: 'dashboard_notes',
     DOCUMENTS: 'dashboard_documents',
     ACTIVITY_LOG: 'dashboard_activity_log',
-    THEME: 'dashboard_theme'
-  },
-  
+    THEME: 'dashboard_theme',
+    BOOKINGS: 'dashboard_bookings'
+  },  
   // Ruoli utente
   ROLES: {
     ADMIN: 'admin',
@@ -95,9 +95,9 @@ const CONFIG = {
     CONTACT: 'contact',
     TASK: 'task',
     NOTE: 'note',
-    DOCUMENT: 'document'
-  },
-  
+    DOCUMENT: 'document',
+    BOOKING: 'booking'
+  },  
   // Impostazioni UI
   UI: {
     ITEMS_PER_PAGE: 20,
@@ -130,6 +130,23 @@ const CONFIG = {
       hour: '2-digit',
       minute: '2-digit'
     }
+  },
+
+  // Stato prenotazioni
+  BOOKING_STATUSES: {
+    CONFIRMED: 'confirmed',
+    PENDING: 'pending',
+    CANCELLED: 'cancelled',
+    BLOCKED: 'blocked'
+  },
+
+  // Canali prenotazione
+  BOOKING_CHANNELS: {
+    DIRECT: 'direct',
+    BOOKING_COM: 'booking.com',
+    AIRBNB: 'airbnb',
+    VRBO: 'vrbo',
+    OTHER: 'other'
   }
 };
 
