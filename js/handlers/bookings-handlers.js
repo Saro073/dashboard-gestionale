@@ -1,0 +1,324 @@
+// ==================== BOOKINGS HANDLERS ====================
+/**
+ * BookingsHandlers - Gestione UI e interazioni per prenotazioni
+ * Separato da app.js per mantenere codice modulare
+ */
+
+const BookingsHandlers = {
+  
+  /**
+   * Inizializza tutti i listener per bookings
+   */
+  setupBookingsListeners() {
+    // Pulsanti view toggle
+    document.getElementById('calendarViewBtn')?.addEventListener('click', () => {
+      this.switchBookingsView('calendar');
+    });
+    
+    document.getElementById('listViewBtn')?.addEventListener('click', () => {
+      this.switchBookingsView('list');
+    });
+    
+    // Pulsanti azioni
+    document.getElementById('addBookingBtn')?.addEventListener('click', () => {
+      this.openBookingModal();
+    });
+    
+    document.getElementById('blockDatesBtn')?.addEventListener('click', () => {
+      this.openBlockDatesModal();
+    });
+    
+    // Filtri
+    document.getElementById('bookingChannelFilter')?.addEventListener('change', () => {
+      this.renderBookings();
+    });
+    
+    document.getElementById('bookingStatusFilter')?.addEventListener('change', () => {
+      this.renderBookings();
+    });
+    
+    document.getElementById('bookingSearch')?.addEventListener('input', 
+      Utils.debounce(() => this.renderBookings(), 300)
+    );
+    
+    // Form prenotazione
+    document.getElementById('bookingForm')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.saveBooking();
+    });
+    
+    // Form blocco date
+    document.getElementById('blockDatesForm')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.blockDates();
+    });
+    
+    // Inizializza calendario quando si entra nella sezione
+    Router.onNavigate((section) => {
+      if (section === 'bookings') {
+        CalendarComponent.init('bookingsCalendar');
+        this.renderBookings();
+      }
+    });
+  },
+
+  /**
+   * Cambia vista tra calendario e lista
+   */
+  switchBookingsView(view) {
+    if (view === 'calendar') {
+      document.getElementById('bookingsCalendarView').classList.add('active');
+      document.getElementById('bookingsListView').classList.remove('active');
+      document.getElementById('calendarViewBtn').classList.add('active');
+      document.getElementById('listViewBtn').classList.remove('active');
+      CalendarComponent.render();
+    } else {
+      document.getElementById('bookingsCalendarView').classList.remove('active');
+      document.getElementById('bookingsListView').classList.add('active');
+      document.getElementById('calendarViewBtn').classList.remove('active');
+      document.getElementById('listViewBtn').classList.add('active');
+      this.renderBookings();
+    }
+  },
+
+  /**
+   * Render lista prenotazioni
+   */
+  renderBookings() {
+    const container = document.getElementById('bookingsList');
+    if (!container) return;
+    
+    const channelFilter = document.getElementById('bookingChannelFilter')?.value || 'all';
+    const statusFilter = document.getElementById('bookingStatusFilter')?.value || 'all';
+    const search = document.getElementById('bookingSearch')?.value || '';
+    
+    let filtered = BookingsModule.getAll();
+    
+    if (channelFilter !== 'all') {
+      filtered = BookingsModule.filterByChannel(channelFilter);
+    }
+    
+    if (statusFilter !== 'all') {
+      filtered = BookingsModule.filterByStatus(statusFilter);
+    }
+    
+    if (search) {
+      filtered = BookingsModule.search(search);
+    }
+    
+    if (filtered.length === 0) {
+      container.innerHTML = '<p class="empty-state">Nessuna prenotazione trovata</p>';
+      return;
+    }
+    
+    container.innerHTML = filtered.map(booking => `
+      <div class="booking-item">
+        <div class="booking-content">
+          <h4>${Utils.escapeHtml(booking.guestName)}</h4>
+          ${booking.guestEmail ? `<p>📧 ${Utils.escapeHtml(booking.guestEmail)}</p>` : ''}
+          ${booking.guestPhone ? `<p>📞 ${Utils.escapeHtml(booking.guestPhone)}</p>` : ''}
+          <div class="booking-dates">
+            <span>📅 ${Utils.formatDate(booking.checkIn)} - ${Utils.formatDate(booking.checkOut)}</span>
+            <span>👥 ${booking.guests} ${booking.guests === 1 ? 'ospite' : 'ospiti'}</span>
+          </div>
+          <div class="item-meta">
+            <span class="item-badge badge-${booking.status}">${this.getStatusLabel(booking.status)}</span>
+            <span class="item-badge badge-${booking.channel}">${this.getChannelLabel(booking.channel)}</span>
+            ${booking.isPaid ? '<span class="item-badge" style="background: #d1fae5; color: #065f46;">✓ Pagato</span>' : ''}
+          </div>
+        </div>
+        <div class="booking-amount">€${booking.totalAmount.toFixed(2)}</div>
+        <div class="item-actions">
+          <button class="btn btn-sm btn-secondary" onclick="BookingsHandlers.editBooking(${booking.id})">Modifica</button>
+          <button class="btn btn-sm btn-danger" onclick="BookingsHandlers.deleteBooking(${booking.id})">Elimina</button>
+        </div>
+      </div>
+    `).join('');
+  },
+
+  /**
+   * Ottiene label tradotta per stato
+   */
+  getStatusLabel(status) {
+    const labels = {
+      confirmed: 'Confermata',
+      pending: 'In Attesa',
+      cancelled: 'Annullata',
+      blocked: 'Bloccata'
+    };
+    return labels[status] || status;
+  },
+
+  /**
+   * Ottiene label tradotta per canale
+   */
+  getChannelLabel(channel) {
+    const labels = {
+      direct: 'Diretto',
+      booking: 'Booking.com',
+      airbnb: 'Airbnb',
+      vrbo: 'VRBO',
+      other: 'Altro'
+    };
+    return labels[channel] || channel;
+  },
+
+  /**
+   * Apre modale nuova prenotazione
+   */
+  openBookingModal() {
+    document.getElementById('bookingModal').classList.add('active');
+    document.getElementById('bookingModalTitle').textContent = 'Nuova Prenotazione';
+    document.getElementById('bookingForm').reset();
+    
+    // Reset form submit handler to create mode
+    const form = document.getElementById('bookingForm');
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      this.saveBooking();
+    };
+    
+    EventBus.emit(EVENTS.MODAL_OPENED, { modal: 'booking' });
+  },
+
+  /**
+   * Modifica prenotazione esistente
+   */
+  editBooking(id) {
+    const booking = BookingsModule.getById(id);
+    if (!booking) return;
+    
+    document.getElementById('bookingModalTitle').textContent = 'Modifica Prenotazione';
+    document.getElementById('bookingGuestName').value = booking.guestName;
+    document.getElementById('bookingGuestEmail').value = booking.guestEmail || '';
+    document.getElementById('bookingGuestPhone').value = booking.guestPhone || '';
+    document.getElementById('bookingCheckIn').value = booking.checkIn;
+    document.getElementById('bookingCheckOut').value = booking.checkOut;
+    document.getElementById('bookingGuests').value = booking.guests;
+    document.getElementById('bookingChannel').value = booking.channel;
+    document.getElementById('bookingTotalAmount').value = booking.totalAmount;
+    document.getElementById('bookingDeposit').value = booking.deposit;
+    document.getElementById('bookingStatus').value = booking.status;
+    document.getElementById('bookingIsPaid').checked = booking.isPaid;
+    document.getElementById('bookingNotes').value = booking.notes || '';
+    
+    document.getElementById('bookingModal').classList.add('active');
+    
+    // Cambia form submit per update
+    const form = document.getElementById('bookingForm');
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      const updates = {
+        guestName: document.getElementById('bookingGuestName').value,
+        guestEmail: document.getElementById('bookingGuestEmail').value,
+        guestPhone: document.getElementById('bookingGuestPhone').value,
+        checkIn: document.getElementById('bookingCheckIn').value,
+        checkOut: document.getElementById('bookingCheckOut').value,
+        guests: parseInt(document.getElementById('bookingGuests').value),
+        channel: document.getElementById('bookingChannel').value,
+        totalAmount: parseFloat(document.getElementById('bookingTotalAmount').value),
+        deposit: parseFloat(document.getElementById('bookingDeposit').value),
+        status: document.getElementById('bookingStatus').value,
+        isPaid: document.getElementById('bookingIsPaid').checked,
+        notes: document.getElementById('bookingNotes').value
+      };
+      
+      const result = BookingsModule.update(id, updates);
+      if (result.success) {
+        document.getElementById('bookingModal').classList.remove('active');
+        document.getElementById('bookingForm').reset();
+        form.onsubmit = null;
+        this.renderBookings();
+        CalendarComponent.render();
+        
+        // Update stats se app.js ha il metodo
+        if (typeof window.app !== 'undefined' && window.app.updateStats) {
+          window.app.updateStats();
+        }
+      }
+    };
+  },
+
+  /**
+   * Elimina prenotazione
+   */
+  deleteBooking(id) {
+    if (confirm('Eliminare questa prenotazione?')) {
+      BookingsModule.delete(id);
+      this.renderBookings();
+      CalendarComponent.render();
+      
+      // Update stats se app.js ha il metodo
+      if (typeof window.app !== 'undefined' && window.app.updateStats) {
+        window.app.updateStats();
+      }
+    }
+  },
+
+  /**
+   * Salva nuova prenotazione
+   */
+  saveBooking() {
+    const data = {
+      guestName: document.getElementById('bookingGuestName').value,
+      guestEmail: document.getElementById('bookingGuestEmail').value,
+      guestPhone: document.getElementById('bookingGuestPhone').value,
+      checkIn: document.getElementById('bookingCheckIn').value,
+      checkOut: document.getElementById('bookingCheckOut').value,
+      guests: parseInt(document.getElementById('bookingGuests').value),
+      channel: document.getElementById('bookingChannel').value,
+      totalAmount: parseFloat(document.getElementById('bookingTotalAmount').value),
+      deposit: parseFloat(document.getElementById('bookingDeposit').value),
+      status: document.getElementById('bookingStatus').value,
+      isPaid: document.getElementById('bookingIsPaid').checked,
+      notes: document.getElementById('bookingNotes').value
+    };
+    
+    const result = BookingsModule.create(data);
+    if (result.success) {
+      document.getElementById('bookingModal').classList.remove('active');
+      document.getElementById('bookingForm').reset();
+      this.renderBookings();
+      CalendarComponent.render();
+      
+      // Update stats se app.js ha il metodo
+      if (typeof window.app !== 'undefined' && window.app.updateStats) {
+        window.app.updateStats();
+      }
+    }
+  },
+
+  /**
+   * Apre modale blocco date
+   */
+  openBlockDatesModal() {
+    document.getElementById('blockDatesModal').classList.add('active');
+    document.getElementById('blockDatesForm').reset();
+    EventBus.emit(EVENTS.MODAL_OPENED, { modal: 'blockDates' });
+  },
+
+  /**
+   * Blocca date
+   */
+  blockDates() {
+    const startDate = document.getElementById('blockStartDate').value;
+    const endDate = document.getElementById('blockEndDate').value;
+    const reason = document.getElementById('blockReason').value;
+    
+    const result = BookingsModule.blockDates(startDate, endDate, reason);
+    if (result.success) {
+      document.getElementById('blockDatesModal').classList.remove('active');
+      document.getElementById('blockDatesForm').reset();
+      this.renderBookings();
+      CalendarComponent.render();
+      
+      // Update stats se app.js ha il metodo
+      if (typeof window.app !== 'undefined' && window.app.updateStats) {
+        window.app.updateStats();
+      }
+    }
+  }
+};
+
+// Rendi disponibile globalmente per onclick handlers
+window.BookingsHandlers = BookingsHandlers;

@@ -55,6 +55,10 @@
                     <span class="nav-icon">📄</span>
                     <span>Documenti</span>
                 </a>
+                <a href="#bookings" class="nav-item" data-section="bookings">
+                    <span class="nav-icon">📅</span>
+                    <span>Prenotazioni</span>
+                </a>
                 <!-- Users Section (Admin Only) -->
                 <a href="#users" class="nav-item" data-section="users" id="usersNavItem" style="display: none;">
                     <span class="nav-icon">🔐</span>
@@ -182,6 +186,46 @@
                 </div>
                 <div id="documentsList" class="items-list">
                     <p class="empty-state">Nessun documento presente</p>
+                </div>
+            </div>
+
+            <!-- Bookings Section -->
+            <div id="bookingsSection" class="content-section">
+                <div class="section-toolbar">
+                    <input type="text" id="bookingSearch" class="form-control" placeholder="Cerca prenotazioni...">
+                    <select id="bookingChannelFilter" class="form-control">
+                        <option value="all">Tutti i Canali</option>
+                        <option value="direct">Diretto</option>
+                        <option value="booking">Booking.com</option>
+                        <option value="airbnb">Airbnb</option>
+                        <option value="vrbo">VRBO</option>
+                        <option value="other">Altro</option>
+                    </select>
+                    <select id="bookingStatusFilter" class="form-control">
+                        <option value="all">Tutti gli Stati</option>
+                        <option value="confirmed">Confermate</option>
+                        <option value="pending">In Attesa</option>
+                        <option value="cancelled">Annullate</option>
+                        <option value="blocked">Bloccate</option>
+                    </select>
+                    <div class="view-toggle-group">
+                        <button id="calendarViewBtn" class="btn view-toggle active">📅 Calendario</button>
+                        <button id="listViewBtn" class="btn view-toggle">📋 Lista</button>
+                    </div>
+                    <button id="addBookingBtn" class="btn btn-primary">+ Nuova Prenotazione</button>
+                    <button id="blockDatesBtn" class="btn btn-secondary">🔒 Blocca Date</button>
+                </div>
+                
+                <!-- Calendar View -->
+                <div id="bookingsCalendarView" class="bookings-view active">
+                    <div id="bookingsCalendar"></div>
+                </div>
+                
+                <!-- List View -->
+                <div id="bookingsListView" class="bookings-view">
+                    <div id="bookingsList" class="items-list">
+                        <p class="empty-state">Nessuna prenotazione presente</p>
+                    </div>
                 </div>
             </div>
 
@@ -358,6 +402,118 @@
         </div>
     </div>
 
+    <!-- Booking Modal -->
+    <div id="bookingModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="bookingModalTitle">Nuova Prenotazione</h2>
+                <button class="modal-close" onclick="document.getElementById('bookingModal').classList.remove('active')">&times;</button>
+            </div>
+            <form id="bookingForm">
+                <div class="form-group">
+                    <label for="bookingGuestName">Nome Ospite *</label>
+                    <input type="text" id="bookingGuestName" required minlength="2">
+                </div>
+                <div class="form-group">
+                    <label for="bookingGuestEmail">Email Ospite</label>
+                    <input type="email" id="bookingGuestEmail">
+                </div>
+                <div class="form-group">
+                    <label for="bookingGuestPhone">Telefono Ospite</label>
+                    <input type="tel" id="bookingGuestPhone">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="bookingCheckIn">Check-in *</label>
+                        <input type="date" id="bookingCheckIn" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="bookingCheckOut">Check-out *</label>
+                        <input type="date" id="bookingCheckOut" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="bookingGuests">Numero Ospiti *</label>
+                        <input type="number" id="bookingGuests" min="1" value="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="bookingChannel">Canale</label>
+                        <select id="bookingChannel">
+                            <option value="direct">Diretto</option>
+                            <option value="booking">Booking.com</option>
+                            <option value="airbnb">Airbnb</option>
+                            <option value="vrbo">VRBO</option>
+                            <option value="other">Altro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="bookingTotalAmount">Importo Totale (€)</label>
+                        <input type="number" id="bookingTotalAmount" min="0" step="0.01" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="bookingDeposit">Acconto (€)</label>
+                        <input type="number" id="bookingDeposit" min="0" step="0.01" value="0">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="bookingStatus">Stato</label>
+                        <select id="bookingStatus">
+                            <option value="confirmed">Confermata</option>
+                            <option value="pending">In Attesa</option>
+                            <option value="cancelled">Annullata</option>
+                            <option value="blocked">Bloccata</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="bookingIsPaid"> Pagato
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="bookingNotes">Note</label>
+                    <textarea id="bookingNotes" rows="3"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('bookingModal').classList.remove('active')">Annulla</button>
+                    <button type="submit" class="btn btn-primary">Salva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Block Dates Modal -->
+    <div id="blockDatesModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Blocca Date</h2>
+                <button class="modal-close" onclick="document.getElementById('blockDatesModal').classList.remove('active')">&times;</button>
+            </div>
+            <form id="blockDatesForm">
+                <div class="form-group">
+                    <label for="blockStartDate">Data Inizio *</label>
+                    <input type="date" id="blockStartDate" required>
+                </div>
+                <div class="form-group">
+                    <label for="blockEndDate">Data Fine *</label>
+                    <input type="date" id="blockEndDate" required>
+                </div>
+                <div class="form-group">
+                    <label for="blockReason">Motivo</label>
+                    <textarea id="blockReason" rows="3" placeholder="Es: Manutenzione, Uso personale..."></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('blockDatesModal').classList.remove('active')">Annulla</button>
+                    <button type="submit" class="btn btn-primary">Blocca</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- User Modal (Admin Only) -->
     <div id="userModal" class="modal">
         <div class="modal-content">
@@ -421,9 +577,16 @@
     <script src="js/modules/tasks.js"></script>
     <script src="js/modules/notes.js"></script>
     <script src="js/modules/documents.js"></script>
+    <script src="js/modules/bookings.js"></script>
     <script src="js/modules/users-management.js"></script>
     
-    <!-- 6. App principale (ultimo!) -->
+    <!-- 6. Componenti -->
+    <script src="js/components/calendar.js"></script>
+    
+    <!-- 7. Handlers -->
+    <script src="js/handlers/bookings-handlers.js"></script>
+    
+    <!-- 8. App principale (ultimo!) -->
     <script src="js/app.js"></script>
 </body>
 </html>

@@ -44,6 +44,8 @@ class DashboardApp {
     EventBus.on(EVENTS.NOTE_DELETED, () => this.updateStats());
     EventBus.on(EVENTS.DOCUMENT_UPLOADED, () => this.updateStats());
     EventBus.on(EVENTS.DOCUMENT_DELETED, () => this.updateStats());
+    EventBus.on(EVENTS.BOOKING_CREATED, () => this.updateStats());
+    EventBus.on(EVENTS.BOOKING_DELETED, () => this.updateStats());
     EventBus.on(EVENTS.USER_CREATED, () => this.renderUsers());
     EventBus.on(EVENTS.USER_UPDATED, () => this.renderUsers());
     EventBus.on(EVENTS.USER_DELETED, () => this.renderUsers());
@@ -53,6 +55,7 @@ class DashboardApp {
     EventBus.on(EVENTS.TASK_CREATED, () => this.renderRecentActivity());
     EventBus.on(EVENTS.NOTE_CREATED, () => this.renderRecentActivity());
     EventBus.on(EVENTS.DOCUMENT_UPLOADED, () => this.renderRecentActivity());
+    EventBus.on(EVENTS.BOOKING_CREATED, () => this.renderRecentActivity());
     EventBus.on(EVENTS.USER_CREATED, () => this.renderRecentActivity());
   }
   
@@ -128,6 +131,9 @@ class DashboardApp {
     
     // Documents
     this.setupDocumentsListeners();
+    
+    // Bookings
+    BookingsHandlers.setupBookingsListeners();
     
     // Users (solo se admin)
     if (PermissionsManager.canCreateUsers()) {

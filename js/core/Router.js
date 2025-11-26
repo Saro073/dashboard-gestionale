@@ -20,7 +20,7 @@ const Router = {
   /**
    * Sezioni disponibili
    */
-  sections: ['overview', 'contacts', 'tasks', 'notes', 'documents', 'users'],
+  sections: ['overview', 'contacts', 'tasks', 'notes', 'documents', 'bookings', 'users'],
 
   /**
    * Callback da eseguire al cambio di sezione
@@ -132,6 +132,7 @@ const Router = {
       tasks: 'Task',
       notes: 'Note',
       documents: 'Documenti',
+      bookings: 'Prenotazioni',
       users: 'Gestione Utenti'
     };
 
