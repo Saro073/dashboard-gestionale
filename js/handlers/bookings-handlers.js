@@ -59,7 +59,11 @@ const BookingsHandlers = {
         CalendarComponent.init('bookingsCalendar');
         this.renderBookings();
       }
-    });
+        });
+
+    // EventBus listeners per click calendario
+    EventBus.on('CALENDAR_DATE_SELECTED', (data) => this.onCalendarDateSelected(data));
+    EventBus.on('CALENDAR_BOOKING_SELECTED', (data) => this.onCalendarBookingSelected(data));
   },
 
   /**
@@ -316,6 +320,36 @@ const BookingsHandlers = {
       if (typeof window.app !== 'undefined' && window.app.updateStats) {
         window.app.updateStats();
       }
+    }
+  },
+
+  /**
+   * Handler per click su giorno vuoto del calendario
+   * Apre modale nuova prenotazione con data pre-compilata
+   */
+  onCalendarDateSelected(data) {
+    const { date } = data;
+    
+    // Apri modale con data pre-compilata
+    this.openBookingModal();
+    
+    // Pre-compila check-in
+    document.getElementById('bookingCheckIn').value = date;
+    
+    // Pre-compila check-out (giorno dopo)
+    const checkOut = new Date(date);
+    checkOut.setDate(checkOut.getDate() + 1);
+    document.getElementById('bookingCheckOut').value = checkOut.toISOString().split('T')[0];
+  },
+
+  /**
+   * Handler per click su prenotazione esistente nel calendario
+   * Apre modale modifica prenotazione
+   */
+  onCalendarBookingSelected(data) {
+    const { booking } = data;
+    if (booking) {
+      this.editBooking(booking.id);
     }
   }
 };
