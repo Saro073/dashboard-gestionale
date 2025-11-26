@@ -1164,3 +1164,51 @@ textarea {
 .flex-1 { flex: 1; }
 .gap-1 { gap: 0.5rem; }
 .gap-2 { gap: 1rem; }
+
+/* ==================== CALENDAR INTERACTIVITY ==================== */
+
+/* Clickable calendar days */
+.calendar-day:not(.empty) {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.calendar-day:not(.empty):hover {
+  background: rgba(37, 99, 235, 0.1);
+  border-color: var(--primary-color);
+  transform: scale(1.05);
+  z-index: 2;
+}
+
+.calendar-day:not(.empty):active {
+  transform: scale(0.98);
+}
+
+/* Hover on booked days */
+.calendar-day.has-booking:hover {
+  filter: brightness(1.1);
+  box-shadow: var(--shadow-md);
+}
+
+/* Next week days clickable */
+.next-week-day {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.next-week-day:hover {
+  background: rgba(37, 99, 235, 0.1);
+  border-color: var(--primary-color);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+
+.next-week-day.has-booking:hover {
+  filter: brightness(1.1);
+}
+
+/* Selected date highlight */
+.calendar-day.selected {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
