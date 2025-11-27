@@ -189,8 +189,7 @@ function switchSection(sectionName) {
     contacts: 'Contatti',
     tasks: 'Task',
     notes: 'Note',
-    documents: 'Documenti',
-            activityLog: 'File Registro'
+    documents: 'Documenti'
   };
   document.getElementById('sectionTitle').textContent = titles[sectionName];
 }
@@ -327,7 +326,6 @@ function renderTasks(filter = 'all') {
         </div>
       </div>
       <div class="item-actions">
-                <button class="btn btn-sm btn-secondary" onclick="editTask(${task.id})">Modifica</button>
         <button class="btn btn-sm btn-danger" onclick="deleteTask(${task.id})">Elimina</button>
       </div>
     </div>
@@ -361,31 +359,6 @@ function deleteTask(id) {
     saveTasks();
     renderTasks();
   }
-}
-
-// Edit Task
-let editingTaskId = null;
-
-function editTask(id) {
-    const task = tasks.find(t => t.id === id);
-    if (task) {
-        editingTaskId = id;
-        document.getElementById('taskModalTitle').textContent = 'Modifica Task';
-        document.getElementById('taskTitle').value = task.title;
-        document.getElementById('taskDescription').value = task.description || '';
-        document.getElementById('taskPriority').value = task.priority;
-        document.getElementById('taskDueDate').value = task.dueDate || '';
-        openModal('taskModal');
-    }
-}
-
-function updateTask(id, taskData) {
-    const index = tasks.findIndex(t => t.id === id);
-    if (index !== -1) {
-        tasks[index] = { ...tasks[index], ...taskData };
-        saveTasks();
-        renderTasks();
-    }
 }
 
 // ==================== NOTES MANAGEMENT ====================
@@ -635,13 +608,7 @@ document.addEventListener('DOMContentLoaded', () => {
       priority: document.getElementById('taskPriority').value,
       dueDate: document.getElementById('taskDueDate').value
     };
-        if (editingTaskId) {
-            updateTask(editingTaskId, taskData);
-            editingTaskId = null;
-            document.getElementById('taskModalTitle').textContent = 'Aggiungi Task';
-        } else {
-            addTask(taskData);
-        }
+    addTask(taskData);
     closeModal('taskModal');
     document.getElementById('taskForm').reset();
   });
