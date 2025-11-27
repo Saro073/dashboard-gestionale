@@ -196,7 +196,8 @@ const BookingsModule = {
       totalAmount: 0,
       status: this.STATUS.BLOCKED,
       notes: reason,
-      channel: this.CHANNELS.DIRECT
+            channel: this.CHANNELS.DIRECT,
+            isBlock: true
     });
   },
 
@@ -340,9 +341,12 @@ const BookingsModule = {
     let totalRevenue = 0;
 
     bookings.forEach(b => {
-      if (b.status !== this.STATUS.BLOCKED) {
+            if (b.status !== this.STATUS.BLOCKED && !b.isBlock) {
         totalRevenue += b.totalAmount || 0;
-      }
+      }}
+
+            // Skip blocks from occupancy calculation
+      if (b.isBlock || b.status === this.STATUS.BLOCKED) return;
       
       const checkIn = new Date(b.checkIn);
       const checkOut = new Date(b.checkOut);
