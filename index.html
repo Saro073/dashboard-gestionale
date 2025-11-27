@@ -112,14 +112,13 @@
                     </div>
                 </div>
 
-                <div class="recent-activity">
-                    <h2>Attività Recenti</h2>
-                    <div id="recentActivity" class="activity-list">
-                        <p class="empty-state">Nessuna attività recente</p>
-                    </div>
-                </div>
+            <!-- Activity Log Button -->
+            <div class="activity-log-section">
+                <button id="activityLogBtn" class="btn btn-primary btn-full-width" onclick="switchSection('activityLog')">
+                    📝 File Registro
+                </button>
             </div>
-
+                        </div>
             <!-- Contacts Section -->
             <div id="contactsSection" class="content-section">
                 <div class="section-toolbar">
@@ -247,6 +246,31 @@
                 </div>
                 <div id="usersList" class="items-list">
                     <p class="empty-state">Nessun utente presente</p>
+                </div>
+            </div>
+
+                        <!-- Activity Log Section -->
+            <div id="activityLogSection" class="content-section">
+                <div class="section-toolbar">
+                    <input type="text" id="activityLogSearch" class="form-control" placeholder="Cerca nel registro...">
+                    <select id="activityLogFilter" class="form-control">
+                        <option value="all">Tutte le Azioni</option>
+                        <option value="create">Creazioni</option>
+                        <option value="update">Modifiche</option>
+                        <option value="delete">Eliminazioni</option>
+                        <option value="login">Login</option>
+                    </select>
+                    <select id="activityLogEntityFilter" class="form-control">
+                        <option value="all">Tutte le Entità</option>
+                        <option value="contact">Contatti</option>
+                        <option value="task">Task</option>
+                        <option value="note">Note</option>
+                        <option value="document">Documenti</option>
+                        <option value="booking">Prenotazioni</option>
+                    </select>
+                </div>
+                <div id="activityLogList" class="activity-log-list">
+                    <p class="empty-state">Nessuna attività registrata</p>
                 </div>
             </div>
 
