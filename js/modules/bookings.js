@@ -340,13 +340,10 @@ const BookingsModule = {
     let totalRevenue = 0;
 
     bookings.forEach(b => {
-      // Escludi blocchi dal revenue
+      // Escludi completamente i blocchi dalle statistiche
       if (b.status !== this.STATUS.BLOCKED) {
         totalRevenue += b.totalAmount || 0;
-      }
-      
-      // Escludi blocchi dal conteggio giorni occupati
-      if (b.status !== this.STATUS.BLOCKED) {
+        
         const checkIn = new Date(b.checkIn);
         const checkOut = new Date(b.checkOut);
         const monthStart = new Date(year, month, 1);
