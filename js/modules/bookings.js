@@ -283,6 +283,21 @@ const BookingsModule = {
   },
 
   /**
+   * Ottiene check-in di oggi
+   * @returns {Array}
+   */
+  getTodayCheckIns() {
+    const bookings = this.getAll();
+    const today = new Date().toISOString().split('T')[0];
+
+    return bookings.filter(b => {
+      if (b.status === this.STATUS.CANCELLED) return false;
+      if (b.status === this.STATUS.BLOCKED) return false;
+      return b.checkIn === today;
+    });
+  },
+
+  /**
    * Ottiene check-out di oggi
    * @returns {Array}
    */
