@@ -223,10 +223,21 @@ class DashboardApp {
     const notesStats = NotesModule.getStats();
     const documentsStats = DocumentsModule.getStats();
     
+    // Statistiche bookings
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    const bookingsStats = BookingsModule.getStats(currentYear, currentMonth);
+    const todayCheckIns = BookingsModule.getTodayCheckIns();
+    const todayCheckOuts = BookingsModule.getTodayCheckOuts();
+    
     document.getElementById('contactsCount').textContent = contactsStats.total;
     document.getElementById('tasksCount').textContent = tasksStats.active;
     document.getElementById('notesCount').textContent = notesStats.total;
     document.getElementById('documentsCount').textContent = documentsStats.total;
+    document.getElementById('bookingsCount').textContent = bookingsStats.totalBookings;
+    document.getElementById('todayCheckIns').textContent = todayCheckIns.length;
+    document.getElementById('todayCheckOuts').textContent = todayCheckOuts.length;
   }
   
   /**
