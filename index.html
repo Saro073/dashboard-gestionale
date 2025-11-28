@@ -59,6 +59,11 @@
                     <span class="nav-icon">📅</span>
                     <span>Prenotazioni</span>
                 </a>
+                <!-- Activity Log Section -->
+                <a href="#activityLog" class="nav-item" data-section="activityLog" id="activityLogNavItem" style="display: none;">
+                    <span class="nav-icon">📋</span>
+                    <span>Registro</span>
+                </a>
                 <!-- Users Section (Admin Only) -->
                 <a href="#users" class="nav-item" data-section="users" id="usersNavItem" style="display: none;">
                     <span class="nav-icon">🔐</span>
@@ -114,7 +119,7 @@
 
             <!-- Activity Log Button -->
             <div class="activity-log-section">
-                <button id="activityLogBtn" class="btn btn-primary btn-full-width" onclick="switchSection('activityLog')">
+                <button id="activityLogBtn" class="btn btn-primary btn-full-width" onclick="Router.navigate('activityLog')">
                     📝 File Registro
                 </button>
             </div>
@@ -326,7 +331,7 @@
     <div id="taskModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Aggiungi Task</h2>
+                <h2 id="taskModalTitle">Aggiungi Task</h2>
                 <button class="modal-close" onclick="document.getElementById('taskModal').classList.remove('active')">&times;</button>
             </div>
             <form id="taskForm">
