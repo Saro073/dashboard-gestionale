@@ -20,6 +20,7 @@ const CONFIG = {
   // Ruoli utente
   ROLES: {
     ADMIN: 'admin',
+    SUPERVISOR: 'supervisor',
     USER: 'user'
   },
   
@@ -30,15 +31,30 @@ const CONFIG = {
       canDeleteUsers: true,
       canEditUsers: true,
       canViewAllData: true,
+      canEditAllData: true,
+      canDeleteAllData: true,
       canExportData: true,
       canViewLogs: true,
       canManageSettings: true
+    },
+    supervisor: {
+      canCreateUsers: false,
+      canDeleteUsers: false,
+      canEditUsers: false,
+      canViewAllData: true,
+      canEditAllData: true,
+      canDeleteAllData: false,
+      canExportData: true,
+      canViewLogs: false,
+      canManageSettings: false
     },
     user: {
       canCreateUsers: false,
       canDeleteUsers: false,
       canEditUsers: false,
       canViewAllData: false,
+      canEditAllData: false,
+      canDeleteAllData: false,
       canExportData: false,
       canViewLogs: false,
       canManageSettings: false
