@@ -16,7 +16,9 @@ const DocumentsModule = {
   
   ALLOWED_EXTENSIONS: [
     'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
-    'txt', 'csv', 'jpg', 'jpeg', 'png', 'gif', 'zip', 'rar'
+    'txt', 'csv', 'jpg', 'jpeg', 'png', 'gif', 'zip', 'rar',
+    // Formati Apple iWork
+    'pages', 'numbers', 'key'
   ],
   
   /**
@@ -381,7 +383,11 @@ const DocumentsModule = {
       png: '🖼️',
       gif: '🖼️',
       zip: '🗃️',
-      rar: '🗃️'
+      rar: '🗃️',
+      // Icone Apple iWork
+      pages: '📘',   // Libro arancione (documento testo)
+      numbers: '📊', // Grafico (foglio calcolo)
+      key: '📽️'     // Proiettore (presentazione)
     };
     return icons[extension.toLowerCase()] || '📁';
   }
