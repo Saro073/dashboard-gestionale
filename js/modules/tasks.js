@@ -52,7 +52,8 @@ const TasksModule = {
       createdByUsername: currentUser.username,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      completedAt: null
+      completedAt: null,
+      attachments: [] // Array di allegati
     };
     
     // Salva
@@ -65,6 +66,9 @@ const TasksModule = {
       title: task.title,
       priority: task.priority
     });
+    
+    EventBus.emit(EVENTS.TASK_CREATED, task);
+    NotificationService.success('Task creato con successo');
     
     return { success: true, task, message: 'Task creato' };
   },
@@ -112,6 +116,8 @@ const TasksModule = {
       title: allTasks[index].title
     });
     
+    NotificationService.success('Task aggiornato');
+    
     return { success: true, task: allTasks[index], message: 'Task aggiornato' };
   },
   
@@ -138,7 +144,13 @@ const TasksModule = {
       completedAt: !task.completed ? new Date().toISOString() : null
     };
     
-    return this.update(id, updates);
+    const result = this.update(id, updates);
+    
+    if (result.success) {
+      EventBus.emit(EVENTS.TASK_COMPLETED, result.task);
+    }
+    
+    return result;
   },
   
   /**
@@ -167,7 +179,120 @@ const TasksModule = {
       title: task.title
     });
     
+    EventBus.emit(EVENTS.TASK_DELETED, { id });
+    NotificationService.success('Task eliminato');
+    
     return { success: true, message: 'Task eliminato' };
+  },
+  
+  /**
+   * Aggiunge allegato a task
+   * @param {number} taskId - ID task
+   * @param {File} file - File da allegare
+   * @returns {Promise<object>} - Risultato operazione
+   */
+  async addAttachment(taskId, file) {
+    const task = this.getById(taskId);
+    
+    if (!task) {
+      return { success: false, message: 'Task non trovato' };
+    }
+    
+    if (!PermissionsManager.canEditTask(task)) {
+      return { success: false, message: 'Non autorizzato' };
+    }
+    
+    // Validazione file (max 5MB)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      return { success: false, message: 'File troppo grande (max 5MB)' };
+    }
+    
+    // Converti file in base64
+    const base64 = await Utils.fileToBase64(file);
+    
+    const attachment = {
+      id: Utils.generateId(),
+      name: file.name,
+      size: file.size,
+      sizeFormatted: Utils.formatFileSize(file.size),
+      type: file.type,
+      extension: file.name.split('.').pop().toLowerCase(),
+      data: base64,
+      uploadedAt: new Date().toISOString(),
+      uploadedBy: AuthManager.getCurrentUser().id,
+      uploadedByUsername: AuthManager.getCurrentUser().username
+    };
+    
+    // Aggiorna task
+    const attachments = task.attachments || [];
+    attachments.push(attachment);
+    
+    const result = this.update(taskId, { attachments });
+    
+    if (result.success) {
+      NotificationService.success(`Allegato "${file.name}" aggiunto`);
+    }
+    
+    return result;
+  },
+  
+  /**
+   * Rimuove allegato da task
+   * @param {number} taskId - ID task
+   * @param {number} attachmentId - ID allegato
+   * @returns {object} - Risultato operazione
+   */
+  removeAttachment(taskId, attachmentId) {
+    const task = this.getById(taskId);
+    
+    if (!task) {
+      return { success: false, message: 'Task non trovato' };
+    }
+    
+    if (!PermissionsManager.canEditTask(task)) {
+      return { success: false, message: 'Non autorizzato' };
+    }
+    
+    const attachments = (task.attachments || []).filter(a => a.id !== attachmentId);
+    const result = this.update(taskId, { attachments });
+    
+    if (result.success) {
+      NotificationService.success('Allegato rimosso');
+    }
+    
+    return result;
+  },
+  
+  /**
+   * Scarica allegato
+   * @param {number} taskId - ID task
+   * @param {number} attachmentId - ID allegato
+   */
+  downloadAttachment(taskId, attachmentId) {
+    const task = this.getById(taskId);
+    
+    if (!task) {
+      NotificationService.error('Task non trovato');
+      return;
+    }
+    
+    const attachment = (task.attachments || []).find(a => a.id === attachmentId);
+    
+    if (!attachment) {
+      NotificationService.error('Allegato non trovato');
+      return;
+    }
+    
+    // Crea link per download
+    const link = document.createElement('a');
+    link.href = attachment.data;
+    link.download = attachment.name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    NotificationService.success(`Download "${attachment.name}" avviato`);
   },
   
   /**
@@ -177,7 +302,7 @@ const TasksModule = {
    * @returns {object} - Risultato operazione
    */
   assign(taskId, userId) {
-    const user = UserManager.getById(userId);
+    const user = UsersManagementModule.getById(userId);
     
     if (!user) {
       return { success: false, message: 'Utente non trovato' };
@@ -254,7 +379,8 @@ const TasksModule = {
         alta: tasks.filter(t => t.priority === CONFIG.TASK_PRIORITIES.ALTA).length,
         critical: tasks.filter(t => t.priority === CONFIG.TASK_PRIORITIES.CRITICAL).length
       },
-      overdue: tasks.filter(t => !t.completed && t.dueDate && new Date(t.dueDate) < new Date()).length
+      overdue: tasks.filter(t => !t.completed && t.dueDate && new Date(t.dueDate) < new Date()).length,
+      withAttachments: tasks.filter(t => t.attachments && t.attachments.length > 0).length
     };
   }
 };
