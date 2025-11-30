@@ -35,6 +35,22 @@ const PermissionsManager = {
   },
   
   /**
+   * Verifica se utente può modificare tutti i dati
+   * @returns {boolean}
+   */
+  canEditAllData() {
+    return AuthManager.hasPermission('canEditAllData');
+  },
+  
+  /**
+   * Verifica se utente può eliminare tutti i dati
+   * @returns {boolean}
+   */
+  canDeleteAllData() {
+    return AuthManager.hasPermission('canDeleteAllData');
+  },
+  
+  /**
    * Verifica se utente può esportare dati
    * @returns {boolean}
    */
@@ -64,8 +80,8 @@ const PermissionsManager = {
    * @returns {boolean}
    */
   canEditContact(contact) {
-    // Admin può modificare tutto
-    if (this.canViewAllData()) return true;
+    // Admin e Supervisor possono modificare tutto
+    if (this.canEditAllData()) return true;
     
     // I contatti sono condivisi - tutti possono modificare
     return true;
@@ -78,9 +94,9 @@ const PermissionsManager = {
    */
   canDeleteContact(contact) {
     // Admin può eliminare tutto
-    if (this.canViewAllData()) return true;
+    if (this.canDeleteAllData()) return true;
     
-    // I contatti sono condivisi - solo chi l'ha creato o admin
+    // Supervisor e User: solo chi l'ha creato
     const currentUser = AuthManager.getCurrentUser();
     return contact.createdBy === currentUser.id;
   },
@@ -91,12 +107,12 @@ const PermissionsManager = {
    * @returns {boolean}
    */
   canEditTask(task) {
-    // Admin può modificare tutto
-    if (this.canViewAllData()) return true;
+    // Admin e Supervisor possono modificare tutto
+    if (this.canEditAllData()) return true;
     
     const currentUser = AuthManager.getCurrentUser();
     
-    // Può modificare se è il creatore o l'assegnatario
+    // User: può modificare se è il creatore o l'assegnatario
     return task.createdBy === currentUser.id || task.assignedTo === currentUser.id;
   },
   
@@ -107,11 +123,11 @@ const PermissionsManager = {
    */
   canDeleteTask(task) {
     // Admin può eliminare tutto
-    if (this.canViewAllData()) return true;
+    if (this.canDeleteAllData()) return true;
     
     const currentUser = AuthManager.getCurrentUser();
     
-    // Solo il creatore può eliminare
+    // Supervisor e User: solo il creatore può eliminare
     return task.createdBy === currentUser.id;
   },
   
@@ -121,12 +137,12 @@ const PermissionsManager = {
    * @returns {boolean}
    */
   canViewTask(task) {
-    // Admin può vedere tutto
+    // Admin e Supervisor possono vedere tutto
     if (this.canViewAllData()) return true;
     
     const currentUser = AuthManager.getCurrentUser();
     
-    // Può vedere se è il creatore o l'assegnatario
+    // User: può vedere se è il creatore o l'assegnatario
     return task.createdBy === currentUser.id || task.assignedTo === currentUser.id;
   },
   
@@ -136,9 +152,12 @@ const PermissionsManager = {
    * @returns {boolean}
    */
   canEditNote(note) {
+    // Admin e Supervisor possono modificare tutto
+    if (this.canEditAllData()) return true;
+    
     const currentUser = AuthManager.getCurrentUser();
     
-    // Le note sono private - solo il creatore
+    // User: le note sono private - solo il creatore
     return note.createdBy === currentUser.id;
   },
   
@@ -148,9 +167,12 @@ const PermissionsManager = {
    * @returns {boolean}
    */
   canDeleteNote(note) {
+    // Admin può eliminare tutto
+    if (this.canDeleteAllData()) return true;
+    
     const currentUser = AuthManager.getCurrentUser();
     
-    // Le note sono private - solo il creatore
+    // Supervisor e User: le note sono private - solo il creatore
     return note.createdBy === currentUser.id;
   },
   
@@ -160,12 +182,12 @@ const PermissionsManager = {
    * @returns {boolean}
    */
   canViewNote(note) {
-    // Admin può vedere tutto
+    // Admin e Supervisor possono vedere tutto
     if (this.canViewAllData()) return true;
     
     const currentUser = AuthManager.getCurrentUser();
     
-    // Le note sono private - solo il creatore
+    // User: le note sono private - solo il creatore
     return note.createdBy === currentUser.id;
   },
   
@@ -175,13 +197,13 @@ const PermissionsManager = {
    * @returns {boolean}
    */
   canEditDocument(document) {
-    // Admin può modificare tutto
-    if (this.canViewAllData()) return true;
+    // Admin e Supervisor possono modificare tutto
+    if (this.canEditAllData()) return true;
     
     const currentUser = AuthManager.getCurrentUser();
     
-    // Solo il creatore può modificare
-    return document.createdBy === currentUser.id;
+    // User: solo il creatore può modificare
+    return document.uploadedBy === currentUser.id;
   },
   
   /**
@@ -191,12 +213,12 @@ const PermissionsManager = {
    */
   canDeleteDocument(document) {
     // Admin può eliminare tutto
-    if (this.canViewAllData()) return true;
+    if (this.canDeleteAllData()) return true;
     
     const currentUser = AuthManager.getCurrentUser();
     
-    // Solo il creatore può eliminare
-    return document.createdBy === currentUser.id;
+    // Supervisor e User: solo il creatore può eliminare
+    return document.uploadedBy === currentUser.id;
   },
   
   /**
@@ -206,7 +228,7 @@ const PermissionsManager = {
    * @returns {Array} - Array filtrato
    */
   filterViewable(items, type) {
-    // Admin vede tutto
+    // Admin e Supervisor vedono tutto
     if (this.canViewAllData()) return items;
     
     const currentUser = AuthManager.getCurrentUser();
