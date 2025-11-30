@@ -257,7 +257,63 @@ textarea {
   font-family: inherit;
 }
 
-/* Buttons */
+/* ==================== MULTI-VALUE INPUT FIELDS ==================== */
+.multi-input-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  align-items: center;
+}
+
+.multi-input-row input {
+  flex: 1;
+}
+
+.multi-input-row .email-value,
+.multi-input-row .phone-value {
+  flex: 2;
+}
+
+.multi-input-row .email-label,
+.multi-input-row .phone-label {
+  flex: 1;
+}
+
+.btn-remove-field {
+  background: var(--danger-color);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-remove-field:hover {
+  background: #dc2626;
+  transform: scale(1.05);
+}
+
+.btn-remove-field:active {
+  transform: scale(0.95);
+}
+
+/* Etichette dei campi */
+.field-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* ==================== BUTTONS ==================== */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -1149,6 +1205,24 @@ textarea {
 
   .form-row {
     grid-template-columns: 1fr;
+  }
+  
+  /* Multi-value inputs responsive */
+  .multi-input-row {
+    flex-direction: column;
+  }
+  
+  .multi-input-row .email-value,
+  .multi-input-row .phone-value,
+  .multi-input-row .email-label,
+  .multi-input-row .phone-label {
+    flex: 1;
+    width: 100%;
+  }
+  
+  .btn-remove-field {
+    width: 100%;
+    margin-top: 0.25rem;
   }
 }
 
