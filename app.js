@@ -4,7 +4,7 @@ const users = [
 ];
 
 let currentUser = null;
-let contacts = [];
+// ATTENZIONE: i contatti ora sono gestiti da ContactsModule/StorageManager
 let tasks = [];
 let notes = [];
 let documents = [];
@@ -85,14 +85,14 @@ const INITIAL_TASKS = [
 
 // ==================== STORAGE MANAGEMENT ====================
 function loadData() {
-  contacts = JSON.parse(localStorage.getItem('contacts') || '[]');
-  
-  // Load tasks with initial data if empty
+  // Migrazione contatti legacy -> nuovo schema
+  ContactsModule.migrateOldContacts();
+
+  // Tasks
   const savedTasks = localStorage.getItem('tasks');
   if (savedTasks) {
     tasks = JSON.parse(savedTasks);
   } else {
-    // First time load: populate with initial tasks
     tasks = INITIAL_TASKS.map((task, index) => ({
       id: Date.now() + index,
       ...task,
@@ -100,14 +100,12 @@ function loadData() {
     }));
     saveTasks();
   }
-  
-  notes = JSON.parse(localStorage.getItem('notes') || '[]');
-  documents = JSON.parse(localStorage.getItem('documents') || '[]');
-}
 
-function saveContacts() {
-  localStorage.setItem('contacts', JSON.stringify(contacts));
-  updateStats();
+  // Notes
+  notes = JSON.parse(localStorage.getItem('notes') || '[]');
+
+  // Documents
+  documents = JSON.parse(localStorage.getItem('documents') || '[]');
 }
 
 function saveTasks() {
@@ -163,7 +161,7 @@ function showDashboard() {
   document.getElementById('userDisplay').textContent = currentUser.username;
   loadData();
   updateStats();
-  renderContacts();
+  app.renderContacts();
   renderTasks();
   renderNotes();
   renderDocuments();
@@ -190,14 +188,17 @@ function switchSection(sectionName) {
     tasks: 'Task',
     notes: 'Note',
     documents: 'Documenti',
-            activityLog: 'File Registro'
+    activityLog: 'File Registro',
+    bookings: 'Prenotazioni',
+    users: 'Utenti'
   };
   document.getElementById('sectionTitle').textContent = titles[sectionName];
 }
 
 // ==================== STATISTICS ====================
 function updateStats() {
-  document.getElementById('contactsCount').textContent = contacts.length;
+  const contactStats = ContactsModule.getStats();
+  document.getElementById('contactsCount').textContent = contactStats.total;
   document.getElementById('tasksCount').textContent = tasks.filter(t => !t.completed).length;
   document.getElementById('notesCount').textContent = notes.length;
   document.getElementById('documentsCount').textContent = documents.length;
@@ -206,97 +207,265 @@ function updateStats() {
 // ==================== CONTACTS MANAGEMENT ====================
 let editingContactId = null;
 
-// Funzione unificata per il rendering dei contatti
-function renderContacts(filter = 'all', searchTerm = '') {
-  const container = document.getElementById('contactsList');
-  const isListView = container.classList.contains('items-list-view');
-  
-  let filteredContacts = contacts;
+const app = {
+  // ---- UI dinamica multi-valore ----
+  addEmailField() {
+    const container = document.getElementById('emailsContainer');
+    const row = document.createElement('div');
+    row.className = 'multi-input-row';
+    row.innerHTML = `
+      <input type="email" class="email-value" placeholder="email@esempio.com" required>
+      <input type="text" class="email-label" placeholder="Etichetta (es: Lavoro)" required>
+      <button type="button" class="btn-remove-field" onclick="app.removeEmailField(this)">✕</button>
+    `;
+    container.appendChild(row);
+  },
 
-  // Filtro per categoria
-  if (filter !== 'all') {
-    filteredContacts = filteredContacts.filter(c => c.category === filter);
-  }
+  removeEmailField(btn) {
+    const container = document.getElementById('emailsContainer');
+    if (container.children.length > 1) {
+      btn.closest('.multi-input-row').remove();
+    } else {
+      NotificationService.error('Almeno un\'email è richiesta');
+    }
+  },
 
-  // Filtro per ricerca
-  if (searchTerm) {
-    filteredContacts = filteredContacts.filter(c =>
-      c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (c.email && c.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (c.company && c.company.toLowerCase().includes(searchTerm.toLowerCase()))
+  addPhoneField() {
+    const container = document.getElementById('phonesContainer');
+    const row = document.createElement('div');
+    row.className = 'multi-input-row';
+    row.innerHTML = `
+      <input type="tel" class="phone-value" placeholder="+39 123 456 789" required>
+      <input type="text" class="phone-label" placeholder="Etichetta (es: Ufficio)" required>
+      <button type="button" class="btn-remove-field" onclick="app.removePhoneField(this)">✕</button>
+    `;
+    container.appendChild(row);
+  },
+
+  removePhoneField(btn) {
+    const container = document.getElementById('phonesContainer');
+    if (container.children.length > 1) {
+      btn.closest('.multi-input-row').remove();
+    } else {
+      NotificationService.error('Almeno un telefono è richiesto');
+    }
+  },
+
+  collectEmails() {
+    const rows = document.querySelectorAll('#emailsContainer .multi-input-row');
+    return Array.from(rows).map(row => ({
+      value: row.querySelector('.email-value').value.trim(),
+      label: row.querySelector('.email-label').value.trim()
+    }));
+  },
+
+  collectPhones() {
+    const rows = document.querySelectorAll('#phonesContainer .multi-input-row');
+    return Array.from(rows).map(row => ({
+      value: row.querySelector('.phone-value').value.trim(),
+      label: row.querySelector('.phone-label').value.trim()
+    }));
+  },
+
+  // ---- CRUD contatti via ContactsModule ----
+  renderContacts(filter = 'all', searchTerm = '') {
+    const container = document.getElementById('contactsList');
+    const isListView = container.classList.contains('items-list-view');
+
+    let contacts = ContactsModule.getAll();
+
+    // Filtro per categoria
+    if (filter !== 'all') {
+      contacts = contacts.filter(c => c.category === filter);
+    }
+
+    // Filtro per ricerca
+    if (searchTerm) {
+      contacts = ContactsModule.search(searchTerm).filter(c =>
+        filter === 'all' ? true : c.category === filter
+      );
+    }
+
+    // Ordinamento alfabetico per vista lista
+    if (isListView) {
+      contacts = [...contacts].sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    if (contacts.length === 0) {
+      container.innerHTML = '<p>Nessun contatto trovato</p>';
+      return;
+    }
+
+    container.innerHTML = contacts.map(contact => `
+      <div class="item-card">
+        <h3>${Utils.escapeHtml(contact.name)}</h3>
+
+        ${contact.emails && contact.emails.length > 0
+          ? contact.emails.map(e =>
+              `<p>📧 ${Utils.escapeHtml(e.value)} <span class="field-label">(${Utils.escapeHtml(e.label)})</span></p>`
+            ).join('')
+          : ''
+        }
+
+        ${contact.phones && contact.phones.length > 0
+          ? contact.phones.map(p =>
+              `<p>📞 ${Utils.escapeHtml(p.value)} <span class="field-label">(${Utils.escapeHtml(p.label)})</span></p>`
+            ).join('')
+          : ''
+        }
+
+        ${contact.company
+          ? `<p>🏢 ${Utils.escapeHtml(contact.company)}</p>`
+          : ''
+        }
+
+        ${contact.notes
+          ? `<p class="contact-notes">📝 ${Utils.escapeHtml(contact.notes)}</p>`
+          : ''
+        }
+
+        <p class="badge badge-sm">${Utils.escapeHtml(contact.category || '')}</p>
+
+        <div class="item-actions">
+          <button class="btn btn-sm" onclick="app.editContact(${contact.id})">✏️ Modifica</button>
+          <button class="btn btn-sm btn-danger" onclick="app.deleteContact(${contact.id})">🗑️ Elimina</button>
+        </div>
+      </div>
+    `).join('');
+  },
+
+  saveContact() {
+    const data = {
+      name: document.getElementById('contactName').value,
+      emails: this.collectEmails(),
+      phones: this.collectPhones(),
+      company: document.getElementById('contactCompany').value,
+      category: document.getElementById('contactCategory').value,
+      notes: document.getElementById('contactNotes').value
+    };
+
+    let result;
+    if (editingContactId) {
+      result = ContactsModule.update(editingContactId, data);
+    } else {
+      result = ContactsModule.create(data);
+    }
+
+    if (!result.success) {
+      return;
+    }
+
+    this.closeContactModal();
+    this.renderContacts(
+      document.getElementById('contactFilter').value,
+      document.getElementById('contactSearch').value
     );
-  }
+    updateStats();
+  },
 
-  // Ordinamento alfabetico per vista lista
-  if (isListView) {
-    filteredContacts = [...filteredContacts].sort((a, b) => a.name.localeCompare(b.name));
-  }
+  editContact(id) {
+    const contact = ContactsModule.getById(id);
+    if (!contact) {
+      NotificationService.error('Contatto non trovato');
+      return;
+    }
 
-  if (filteredContacts.length === 0) {
-    container.innerHTML = '<p class="empty-state">Nessun contatto trovato</p>';
-    return;
-  }
-
-  container.innerHTML = filteredContacts.map(contact => `
-    <div class="item-card">
-      <h3>${contact.name}</h3>
-      ${contact.email ? `<p>📧 ${contact.email}</p>` : ''}
-      ${contact.phone ? `<p>📞 ${contact.phone}</p>` : ''}
-      ${contact.company ? `<p>🏢 ${contact.company}</p>` : ''}
-      ${contact.notes ? `<p class="contact-notes">📝 ${contact.notes}</p>` : ''}
-      <div class="item-meta">
-        <span class="item-badge badge-${contact.category}">${contact.category}</span>
-      </div>
-      <div class="item-actions">
-        <button class="btn btn-sm btn-secondary" onclick="editContact(${contact.id})">Modifica</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteContact(${contact.id})">Elimina</button>
-      </div>
-    </div>
-  `).join('');
-}
-
-function addContact(contactData) {
-  const contact = {
-    id: Date.now(),
-    ...contactData,
-    createdAt: new Date().toISOString()
-  };
-  contacts.push(contact);
-  saveContacts();
-  renderContacts();
-}
-
-function updateContact(id, contactData) {
-  const index = contacts.findIndex(c => c.id === id);
-  if (index !== -1) {
-    contacts[index] = { ...contacts[index], ...contactData };
-    saveContacts();
-    renderContacts();
-  }
-}
-
-function editContact(id) {
-  const contact = contacts.find(c => c.id === id);
-  if (contact) {
     editingContactId = id;
     document.getElementById('contactModalTitle').textContent = 'Modifica Contatto';
     document.getElementById('contactName').value = contact.name;
-    document.getElementById('contactEmail').value = contact.email || '';
-    document.getElementById('contactPhone').value = contact.phone || '';
     document.getElementById('contactCompany').value = contact.company || '';
-    document.getElementById('contactCategory').value = contact.category;
+    document.getElementById('contactCategory').value = contact.category || 'cliente';
     document.getElementById('contactNotes').value = contact.notes || '';
-    openModal('contactModal');
-  }
-}
 
-function deleteContact(id) {
-  if (confirm('Sei sicuro di voler eliminare questo contatto?')) {
-    contacts = contacts.filter(c => c.id !== id);
-    saveContacts();
-    renderContacts();
+    const emailsContainer = document.getElementById('emailsContainer');
+    const phonesContainer = document.getElementById('phonesContainer');
+    emailsContainer.innerHTML = '';
+    phonesContainer.innerHTML = '';
+
+    const emails = contact.emails && contact.emails.length
+      ? contact.emails
+      : [{ value: '', label: 'Principale' }];
+
+    emails.forEach(e => {
+      const row = document.createElement('div');
+      row.className = 'multi-input-row';
+      row.innerHTML = `
+        <input type="email" class="email-value" placeholder="email@esempio.com" required value="${Utils.escapeHtml(e.value)}">
+        <input type="text" class="email-label" placeholder="Etichetta (es: Lavoro)" required value="${Utils.escapeHtml(e.label)}">
+        <button type="button" class="btn-remove-field" onclick="app.removeEmailField(this)">✕</button>
+      `;
+      emailsContainer.appendChild(row);
+    });
+
+    const phones = contact.phones && contact.phones.length
+      ? contact.phones
+      : [{ value: '', label: 'Principale' }];
+
+    phones.forEach(p => {
+      const row = document.createElement('div');
+      row.className = 'multi-input-row';
+      row.innerHTML = `
+        <input type="tel" class="phone-value" placeholder="+39 123 456 789" required value="${Utils.escapeHtml(p.value)}">
+        <input type="text" class="phone-label" placeholder="Etichetta (es: Ufficio)" required value="${Utils.escapeHtml(p.label)}">
+        <button type="button" class="btn-remove-field" onclick="app.removePhoneField(this)">✕</button>
+      `;
+      phonesContainer.appendChild(row);
+    });
+
+    openModal('contactModal');
+  },
+
+  deleteContact(id) {
+    if (!confirm('Sei sicuro di voler eliminare questo contatto?')) return;
+
+    const result = ContactsModule.delete(id);
+    if (!result.success) return;
+
+    this.renderContacts(
+      document.getElementById('contactFilter').value,
+      document.getElementById('contactSearch').value
+    );
+    updateStats();
+  },
+
+  openContactModalForNew() {
+    editingContactId = null;
+    document.getElementById('contactModalTitle').textContent = 'Aggiungi Contatto';
+    document.getElementById('contactForm').reset();
+
+    const emailsContainer = document.getElementById('emailsContainer');
+    const phonesContainer = document.getElementById('phonesContainer');
+    emailsContainer.innerHTML = '';
+    phonesContainer.innerHTML = '';
+
+    // campo email di default
+    const emailRow = document.createElement('div');
+    emailRow.className = 'multi-input-row';
+    emailRow.innerHTML = `
+      <input type="email" class="email-value" placeholder="email@esempio.com" required>
+      <input type="text" class="email-label" placeholder="Etichetta (es: Lavoro)" required>
+      <button type="button" class="btn-remove-field" onclick="app.removeEmailField(this)">✕</button>
+    `;
+    emailsContainer.appendChild(emailRow);
+
+    // campo telefono di default
+    const phoneRow = document.createElement('div');
+    phoneRow.className = 'multi-input-row';
+    phoneRow.innerHTML = `
+      <input type="tel" class="phone-value" placeholder="+39 123 456 789" required>
+      <input type="text" class="phone-label" placeholder="Etichetta (es: Ufficio)" required>
+      <button type="button" class="btn-remove-field" onclick="app.removePhoneField(this)">✕</button>
+    `;
+    phonesContainer.appendChild(phoneRow);
+
+    openModal('contactModal');
+  },
+
+  closeContactModal() {
+    closeModal('contactModal');
+    editingContactId = null;
   }
-}
+};
 
 // ==================== TASKS MANAGEMENT ====================
 function renderTasks(filter = 'all') {
@@ -310,25 +479,24 @@ function renderTasks(filter = 'all') {
   }
 
   if (filteredTasks.length === 0) {
-    container.innerHTML = '<p class="empty-state">Nessun task trovato</p>';
+    container.innerHTML = '<p>Nessun task trovato</p>';
     return;
   }
 
   container.innerHTML = filteredTasks.map(task => `
-    <div class="task-item ${task.completed ? 'completed' : ''}">
-      <input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''} 
-             onchange="toggleTask(${task.id})">
-      <div class="task-content">
-        <h4>${task.title}</h4>
-        ${task.description ? `<p>${task.description}</p>` : ''}
-        <div class="item-meta">
-          <span class="item-badge badge-${task.priority}">${task.priority}</span>
-          ${task.dueDate ? `<span>📅 ${new Date(task.dueDate).toLocaleDateString('it-IT')}</span>` : ''}
-        </div>
+    <div class="task-item">
+      <label>
+        <input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask(${task.id})">
+        <span class="${task.completed ? 'task-completed' : ''}">${Utils.escapeHtml(task.title)}</span>
+      </label>
+      ${task.description ? `<p>${Utils.escapeHtml(task.description)}</p>` : ''}
+      <div class="task-meta">
+        <span class="badge badge-${Utils.escapeHtml(task.priority)}">${Utils.escapeHtml(task.priority)}</span>
+        ${task.dueDate ? `<span>📅 ${new Date(task.dueDate).toLocaleDateString('it-IT')}</span>` : ''}
       </div>
       <div class="item-actions">
-                <button class="btn btn-sm btn-secondary" onclick="editTask(${task.id})">Modifica</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteTask(${task.id})">Elimina</button>
+        <button class="btn btn-sm" onclick="editTask(${task.id})">✏️ Modifica</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteTask(${task.id})">🗑️ Elimina</button>
       </div>
     </div>
   `).join('');
@@ -343,7 +511,7 @@ function addTask(taskData) {
   };
   tasks.push(task);
   saveTasks();
-  renderTasks();
+  renderTasks(document.getElementById('taskFilter').value);
 }
 
 function toggleTask(id) {
@@ -359,33 +527,32 @@ function deleteTask(id) {
   if (confirm('Sei sicuro di voler eliminare questo task?')) {
     tasks = tasks.filter(t => t.id !== id);
     saveTasks();
-    renderTasks();
+    renderTasks(document.getElementById('taskFilter').value);
   }
 }
 
-// Edit Task
 let editingTaskId = null;
 
 function editTask(id) {
-    const task = tasks.find(t => t.id === id);
-    if (task) {
-        editingTaskId = id;
-        document.getElementById('taskModalTitle').textContent = 'Modifica Task';
-        document.getElementById('taskTitle').value = task.title;
-        document.getElementById('taskDescription').value = task.description || '';
-        document.getElementById('taskPriority').value = task.priority;
-        document.getElementById('taskDueDate').value = task.dueDate || '';
-        openModal('taskModal');
-    }
+  const task = tasks.find(t => t.id === id);
+  if (task) {
+    editingTaskId = id;
+    document.getElementById('taskModalTitle').textContent = 'Modifica Task';
+    document.getElementById('taskTitle').value = task.title;
+    document.getElementById('taskDescription').value = task.description || '';
+    document.getElementById('taskPriority').value = task.priority;
+    document.getElementById('taskDueDate').value = task.dueDate || '';
+    openModal('taskModal');
+  }
 }
 
 function updateTask(id, taskData) {
-    const index = tasks.findIndex(t => t.id === id);
-    if (index !== -1) {
-        tasks[index] = { ...tasks[index], ...taskData };
-        saveTasks();
-        renderTasks();
-    }
+  const index = tasks.findIndex(t => t.id === id);
+  if (index !== -1) {
+    tasks[index] = { ...tasks[index], ...taskData };
+    saveTasks();
+    renderTasks(document.getElementById('taskFilter').value);
+  }
 }
 
 // ==================== NOTES MANAGEMENT ====================
@@ -398,21 +565,21 @@ function renderNotes(filter = 'all') {
   }
 
   if (filteredNotes.length === 0) {
-    container.innerHTML = '<p class="empty-state">Nessuna nota trovata</p>';
+    container.innerHTML = '<p>Nessuna nota trovata</p>';
     return;
   }
 
   container.innerHTML = filteredNotes.map(note => `
     <div class="item-card">
-      <h3>${note.title}</h3>
-      <p>${note.content.substring(0, 150)}${note.content.length > 150 ? '...' : ''}</p>
+      <h3>${Utils.escapeHtml(note.title)}</h3>
+      <p>${Utils.escapeHtml(note.content.substring(0, 150))}${note.content.length > 150 ? '...' : ''}</p>
       <div class="item-meta">
-        <span class="item-badge badge-${note.category}">${note.category}</span>
-        <span class="activity-time">${new Date(note.createdAt).toLocaleDateString('it-IT')}</span>
+        <span class="badge">${Utils.escapeHtml(note.category)}</span>
+        <span>${new Date(note.createdAt).toLocaleDateString('it-IT')}</span>
       </div>
       <div class="item-actions">
-        <button class="btn btn-sm btn-secondary" onclick="viewNote(${note.id})">Visualizza</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteNote(${note.id})">Elimina</button>
+        <button class="btn btn-sm" onclick="viewNote(${note.id})">👁️ Visualizza</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteNote(${note.id})">🗑️ Elimina</button>
       </div>
     </div>
   `).join('');
@@ -426,7 +593,7 @@ function addNote(noteData) {
   };
   notes.push(note);
   saveNotes();
-  renderNotes();
+  renderNotes(document.getElementById('noteFilter').value);
 }
 
 function viewNote(id) {
@@ -440,7 +607,7 @@ function deleteNote(id) {
   if (confirm('Sei sicuro di voler eliminare questa nota?')) {
     notes = notes.filter(n => n.id !== id);
     saveNotes();
-    renderNotes();
+    renderNotes(document.getElementById('noteFilter').value);
   }
 }
 
@@ -454,22 +621,20 @@ function renderDocuments(filter = 'all') {
   }
 
   if (filteredDocuments.length === 0) {
-    container.innerHTML = '<p class="empty-state">Nessun documento trovato</p>';
+    container.innerHTML = '<p>Nessun documento trovato</p>';
     return;
   }
 
   container.innerHTML = filteredDocuments.map(doc => `
-    <div class="task-item">
-      <div class="task-content flex-1">
-        <h4>📄 ${doc.name}</h4>
-        ${doc.notes ? `<p>${doc.notes}</p>` : ''}
-        <div class="item-meta">
-          <span class="item-badge badge-${doc.category}">${doc.category}</span>
-          <span class="activity-time">${new Date(doc.createdAt).toLocaleDateString('it-IT')}</span>
-        </div>
+    <div class="item-card">
+      <h4>📄 ${Utils.escapeHtml(doc.name)}</h4>
+      ${doc.notes ? `<p>${Utils.escapeHtml(doc.notes)}</p>` : ''}
+      <div class="item-meta">
+        <span class="badge">${Utils.escapeHtml(doc.category)}</span>
+        <span>${new Date(doc.createdAt).toLocaleDateString('it-IT')}</span>
       </div>
       <div class="item-actions">
-        <button class="btn btn-sm btn-danger" onclick="deleteDocument(${doc.id})">Elimina</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteDocument(${doc.id})">🗑️ Elimina</button>
       </div>
     </div>
   `).join('');
@@ -483,14 +648,14 @@ function addDocument(documentData) {
   };
   documents.push(doc);
   saveDocuments();
-  renderDocuments();
+  renderDocuments(document.getElementById('documentFilter').value);
 }
 
 function deleteDocument(id) {
   if (confirm('Sei sicuro di voler eliminare questo documento?')) {
     documents = documents.filter(d => d.id !== id);
     saveDocuments();
-    renderDocuments();
+    renderDocuments(document.getElementById('documentFilter').value);
   }
 }
 
@@ -533,7 +698,6 @@ document.addEventListener('DOMContentLoaded', () => {
     e.preventDefault();
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
-    
     if (login(username, password)) {
       showDashboard();
     } else {
@@ -559,40 +723,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Contact management
   document.getElementById('addContactBtn').addEventListener('click', () => {
-    editingContactId = null;
-    document.getElementById('contactModalTitle').textContent = 'Aggiungi Contatto';
-    openModal('contactModal');
+    app.openContactModalForNew();
   });
 
   document.getElementById('contactSearch').addEventListener('input', (e) => {
     const filter = document.getElementById('contactFilter').value;
-    renderContacts(filter, e.target.value);
+    app.renderContacts(filter, e.target.value);
   });
 
   document.getElementById('contactFilter').addEventListener('change', (e) => {
     const search = document.getElementById('contactSearch').value;
-    renderContacts(e.target.value, search);
+    app.renderContacts(e.target.value, search);
   });
 
   document.getElementById('contactForm').addEventListener('submit', (e) => {
     e.preventDefault();
-    const contactData = {
-      name: document.getElementById('contactName').value,
-      email: document.getElementById('contactEmail').value,
-      phone: document.getElementById('contactPhone').value,
-      company: document.getElementById('contactCompany').value,
-      category: document.getElementById('contactCategory').value,
-      notes: document.getElementById('contactNotes').value
-    };
-
-    if (editingContactId) {
-      updateContact(editingContactId, contactData);
-    } else {
-      addContact(contactData);
-    }
-
-    closeModal('contactModal');
-    document.getElementById('contactForm').reset();
+    app.saveContact();
   });
 
   // View toggle for contacts
@@ -604,7 +750,7 @@ document.addEventListener('DOMContentLoaded', () => {
     container.classList.add('items-grid');
     const filter = document.getElementById('contactFilter').value;
     const search = document.getElementById('contactSearch').value;
-    renderContacts(filter, search);
+    app.renderContacts(filter, search);
   });
 
   document.getElementById('listViewBtn').addEventListener('click', () => {
@@ -615,7 +761,7 @@ document.addEventListener('DOMContentLoaded', () => {
     container.classList.add('items-list-view');
     const filter = document.getElementById('contactFilter').value;
     const search = document.getElementById('contactSearch').value;
-    renderContacts(filter, search);
+    app.renderContacts(filter, search);
   });
 
   // Task management
@@ -635,13 +781,15 @@ document.addEventListener('DOMContentLoaded', () => {
       priority: document.getElementById('taskPriority').value,
       dueDate: document.getElementById('taskDueDate').value
     };
-        if (editingTaskId) {
-            updateTask(editingTaskId, taskData);
-            editingTaskId = null;
-            document.getElementById('taskModalTitle').textContent = 'Aggiungi Task';
-        } else {
-            addTask(taskData);
-        }
+
+    if (editingTaskId) {
+      updateTask(editingTaskId, taskData);
+      editingTaskId = null;
+      document.getElementById('taskModalTitle').textContent = 'Aggiungi Task';
+    } else {
+      addTask(taskData);
+    }
+
     closeModal('taskModal');
     document.getElementById('taskForm').reset();
   });
