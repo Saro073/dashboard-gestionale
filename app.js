@@ -613,6 +613,8 @@ function updateNote(id, noteData) {
   }
 }
 
+let editingNoteId = null;
+
 function editNote(id) {
   const note = notes.find(n => n.id === id);
   if (!note) {
@@ -627,6 +629,19 @@ function editNote(id) {
   document.getElementById('noteCategory').value = note.category;
   document.getElementById('noteUrgent').checked = note.urgent || false;
   openModal('noteModal');
+}
+
+function updateNote(id, noteData) {
+  const index = notes.findIndex(n => n.id === id);
+  if (index !== -1) {
+    notes[index] = { 
+      ...notes[index], 
+      ...noteData,
+      updatedAt: new Date().toISOString()
+    };
+    saveNotes();
+    renderNotes(document.getElementById('noteFilter').value);
+  }
 }
 
 function viewNote(id) {
