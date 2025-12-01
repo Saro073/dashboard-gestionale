@@ -580,6 +580,7 @@ function renderNotes(filter = 'all') {
       </div>
       <div class="item-actions">
         <button class="btn btn-sm" onclick="viewNote(${note.id})">👁️ Visualizza</button>
+                        <button class="btn btn-sm" onclick="editNote(${note.id})">✏️ Modifica</button>
         <button class="btn btn-sm btn-danger" onclick="deleteNote(${note.id})">🗑️ Elimina</button>
       </div>
     </div>
