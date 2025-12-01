@@ -216,7 +216,7 @@ const app = {
     row.innerHTML = `
       <input type="email" class="email-value" placeholder="email@esempio.com" required>
       <input type="text" class="email-label" placeholder="Etichetta (es: Lavoro)" required>
-      <button type="button" class="btn-remove-field" onclick="app.removeEmailField(this)"✕</button>
+      <button type="button" class="btn-remove-field" onclick="app.removeEmailField(this)">✕</button>
     `;
     container.appendChild(row);
   },
@@ -556,6 +556,8 @@ function updateTask(id, taskData) {
 }
 
 // ==================== NOTES MANAGEMENT ====================
+let editingNoteId = null;
+
 function renderNotes(filter = 'all') {
   const container = document.getElementById('notesList');
   let filteredNotes = notes;
@@ -575,12 +577,12 @@ function renderNotes(filter = 'all') {
       <p>${Utils.escapeHtml(note.content.substring(0, 150))}${note.content.length > 150 ? '...' : ''}</p>
       <div class="item-meta">
         <span class="badge">${Utils.escapeHtml(note.category)}</span>
-                    ${note.urgent ? '<span class="badge urgent-badge">🚨 URGENTE</span>' : ''}
+        ${note.urgent ? '<span class="badge urgent-badge">🚨 URGENTE</span>' : ''}
         <span>${new Date(note.createdAt).toLocaleDateString('it-IT')}</span>
       </div>
       <div class="item-actions">
         <button class="btn btn-sm" onclick="viewNote(${note.id})">👁️ Visualizza</button>
-                        <button class="btn btn-sm" onclick="editNote(${note.id})">✏️ Modifica</button>
+        <button class="btn btn-sm" onclick="editNote(${note.id})">✏️ Modifica</button>
         <button class="btn btn-sm btn-danger" onclick="deleteNote(${note.id})">🗑️ Elimina</button>
       </div>
     </div>
@@ -596,6 +598,35 @@ function addNote(noteData) {
   notes.push(note);
   saveNotes();
   renderNotes(document.getElementById('noteFilter').value);
+}
+
+function updateNote(id, noteData) {
+  const index = notes.findIndex(n => n.id === id);
+  if (index !== -1) {
+    notes[index] = { 
+      ...notes[index], 
+      ...noteData,
+      updatedAt: new Date().toISOString()
+    };
+    saveNotes();
+    renderNotes(document.getElementById('noteFilter').value);
+  }
+}
+
+function editNote(id) {
+  const note = notes.find(n => n.id === id);
+  if (!note) {
+    alert('Nota non trovata');
+    return;
+  }
+
+  editingNoteId = id;
+  document.getElementById('noteModalTitle').textContent = 'Modifica Nota';
+  document.getElementById('noteTitle').value = note.title;
+  document.getElementById('noteContent').value = note.content;
+  document.getElementById('noteCategory').value = note.category;
+  document.getElementById('noteUrgent').checked = note.urgent || false;
+  openModal('noteModal');
 }
 
 function viewNote(id) {
@@ -668,10 +699,20 @@ function openModal(modalId) {
 
 function closeModal(modalId) {
   document.getElementById(modalId).classList.remove('active');
+  
+  // Reset states based on modal type
   if (modalId === 'contactModal') {
     editingContactId = null;
     document.getElementById('contactForm').reset();
     document.getElementById('contactModalTitle').textContent = 'Aggiungi Contatto';
+  } else if (modalId === 'taskModal') {
+    editingTaskId = null;
+    document.getElementById('taskForm').reset();
+    document.getElementById('taskModalTitle').textContent = 'Aggiungi Task';
+  } else if (modalId === 'noteModal') {
+    editingNoteId = null;
+    document.getElementById('noteForm').reset();
+    document.getElementById('noteModalTitle').textContent = 'Nuova Nota';
   }
 }
 
@@ -798,6 +839,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Note management
   document.getElementById('addNoteBtn').addEventListener('click', () => {
+    editingNoteId = null;
+    document.getElementById('noteModalTitle').textContent = 'Nuova Nota';
+    document.getElementById('noteForm').reset();
     openModal('noteModal');
   });
 
@@ -811,9 +855,17 @@ document.addEventListener('DOMContentLoaded', () => {
       title: document.getElementById('noteTitle').value,
       content: document.getElementById('noteContent').value,
       category: document.getElementById('noteCategory').value,
-        urgent: document.getElementById('noteUrgent').checked
+      urgent: document.getElementById('noteUrgent').checked
     };
-    addNote(noteData);
+
+    if (editingNoteId) {
+      updateNote(editingNoteId, noteData);
+      editingNoteId = null;
+      document.getElementById('noteModalTitle').textContent = 'Nuova Nota';
+    } else {
+      addNote(noteData);
+    }
+
     closeModal('noteModal');
     document.getElementById('noteForm').reset();
   });
