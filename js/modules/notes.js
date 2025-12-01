@@ -53,6 +53,7 @@ const NotesModule = {
       category: noteData.category || CONFIG.NOTE_CATEGORIES.GENERALE,
       color: noteData.color || '#ffffff',
       pinned: noteData.pinned || false,
+      isUrgent: noteData.isUrgent || false,
       tags: noteData.tags || [],
       createdBy: currentUser.id,
       createdByUsername: currentUser.username,
@@ -68,7 +69,8 @@ const NotesModule = {
     // Log attività
     ActivityLog.log(CONFIG.ACTION_TYPES.CREATE, CONFIG.ENTITY_TYPES.NOTE, note.id, {
       title: note.title,
-      category: note.category
+      category: note.category,
+      isUrgent: note.isUrgent
     });
     
     // Emetti evento
@@ -197,6 +199,32 @@ const NotesModule = {
   },
   
   /**
+   * Toggle flag urgente
+   * @param {number} id - ID nota
+   * @returns {object} - { success: boolean, isUrgent: boolean }
+   */
+  toggleUrgent(id) {
+    const notes = this.getAll();
+    const index = notes.findIndex(n => n.id === id);
+    
+    if (index === -1) {
+      return { success: false, isUrgent: false };
+    }
+    
+    notes[index].isUrgent = !notes[index].isUrgent;
+    notes[index].updatedAt = new Date().toISOString();
+    
+    StorageManager.save(CONFIG.STORAGE_KEYS.NOTES, notes);
+    
+    EventBus.emit(EVENTS.NOTE_UPDATED, notes[index]);
+    
+    const message = notes[index].isUrgent ? 'Nota contrassegnata come urgente' : 'Flag urgente rimosso';
+    NotificationService.success(message);
+    
+    return { success: true, isUrgent: notes[index].isUrgent };
+  },
+  
+  /**
    * Filtra note per categoria
    * @param {string} category - Categoria
    * @returns {Array} - Array filtrato
@@ -208,12 +236,31 @@ const NotesModule = {
   },
   
   /**
+   * Filtra note urgenti
+   * @param {boolean} urgentOnly - Se true, mostra solo urgenti
+   * @returns {Array} - Array filtrato
+   */
+  filterByUrgent(urgentOnly = true) {
+    const notes = this.getAll();
+    return urgentOnly ? notes.filter(n => n.isUrgent) : notes.filter(n => !n.isUrgent);
+  },
+  
+  /**
    * Ottiene note pinnate
    * @returns {Array} - Array note pinnate
    */
   getPinned() {
     const notes = this.getAll();
     return notes.filter(n => n.pinned);
+  },
+  
+  /**
+   * Ottiene note urgenti
+   * @returns {Array} - Array note urgenti
+   */
+  getUrgent() {
+    const notes = this.getAll();
+    return notes.filter(n => n.isUrgent);
   },
   
   /**
@@ -261,6 +308,7 @@ const NotesModule = {
     return {
       total: notes.length,
       pinned: notes.filter(n => n.pinned).length,
+      urgent: notes.filter(n => n.isUrgent).length,
       byCategory: {
         lavoro: notes.filter(n => n.category === CONFIG.NOTE_CATEGORIES.LAVORO).length,
         personale: notes.filter(n => n.category === CONFIG.NOTE_CATEGORIES.PERSONALE).length,

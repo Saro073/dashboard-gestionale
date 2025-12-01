@@ -59,6 +59,11 @@
                     <span class="nav-icon">📅</span>
                     <span>Prenotazioni</span>
                 </a>
+                <!-- Activity Log Section -->
+                <a href="#activityLog" class="nav-item" data-section="activityLog" id="activityLogNavItem" style="display: none;">
+                    <span class="nav-icon">📋</span>
+                    <span>Registro</span>
+                </a>
                 <!-- Users Section (Admin Only) -->
                 <a href="#users" class="nav-item" data-section="users" id="usersNavItem" style="display: none;">
                     <span class="nav-icon">🔐</span>
@@ -110,12 +115,26 @@
                             <p>Documenti</p>
                         </div>
                     </div>
-                </div>
-
-                <div class="recent-activity">
-                    <h2>Attività Recenti</h2>
-                    <div id="recentActivity" class="activity-list">
-                        <p class="empty-state">Nessuna attività recente</p>
+                    <div class="stat-card">
+                        <div class="stat-icon">📅</div>
+                        <div class="stat-info">
+                            <h3 id="bookingsCount">0</h3>
+                            <p>Prenotazioni</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🔔</div>
+                        <div class="stat-info">
+                            <h3 id="todayCheckIns">0</h3>
+                            <p>Check-in Oggi</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🚺</div>
+                        <div class="stat-info">
+                            <h3 id="todayCheckOuts">0</h3>
+                            <p>Check-out Oggi</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -265,14 +284,37 @@
                     <label for="contactName">Nome *</label>
                     <input type="text" id="contactName" required>
                 </div>
+                
+                <!-- EMAILS MULTIPLI -->
                 <div class="form-group">
-                    <label for="contactEmail">Email</label>
-                    <input type="email" id="contactEmail">
+                    <label>Email *</label>
+                    <div id="emailsContainer">
+                        <div class="multi-input-row">
+                            <input type="email" class="email-value" placeholder="email@esempio.com" required>
+                            <input type="text" class="email-label" placeholder="Etichetta (es: Lavoro)" required>
+                            <button type="button" class="btn-remove-field" onclick="app.removeEmailField(this)" title="Rimuovi email">✕</button>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="app.addEmailField()" style="margin-top: 8px;">
+                        ➕ Aggiungi Email
+                    </button>
                 </div>
+                
+                <!-- TELEFONI MULTIPLI -->
                 <div class="form-group">
-                    <label for="contactPhone">Telefono</label>
-                    <input type="tel" id="contactPhone">
+                    <label>Telefono *</label>
+                    <div id="phonesContainer">
+                        <div class="multi-input-row">
+                            <input type="tel" class="phone-value" placeholder="+39 123 456 789" required>
+                            <input type="text" class="phone-label" placeholder="Etichetta (es: Ufficio)" required>
+                            <button type="button" class="btn-remove-field" onclick="app.removePhoneField(this)" title="Rimuovi telefono">✕</button>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="app.addPhoneField()" style="margin-top: 8px;">
+                        ➕ Aggiungi Telefono
+                    </button>
                 </div>
+                
                 <div class="form-group">
                     <label for="contactCompany">Azienda</label>
                     <input type="text" id="contactCompany">
@@ -302,7 +344,7 @@
     <div id="taskModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Aggiungi Task</h2>
+                <h2 id="taskModalTitle">Aggiungi Task</h2>
                 <button class="modal-close" onclick="document.getElementById('taskModal').classList.remove('active')">&times;</button>
             </div>
             <form id="taskForm">
@@ -327,6 +369,20 @@
                     <label for="taskDueDate">Scadenza</label>
                     <input type="date" id="taskDueDate">
                 </div>
+                
+                <!-- ALLEGATI -->
+                <div class="form-group">
+                    <label for="taskAttachments">Allegati (opzionale)</label>
+                    <input type="file" id="taskAttachments" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.png,.jpg,.jpeg,.zip">
+                    <small>Max 5MB per file - PDF, DOC, XLS, TXT, IMG, ZIP</small>
+                </div>
+                
+                <!-- Lista allegati esistenti (in modalità edit) -->
+                <div id="taskAttachmentsList" style="display: none;">
+                    <label>Allegati attuali:</label>
+                    <div id="taskCurrentAttachments" class="attachments-list"></div>
+                </div>
+                
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="document.getElementById('taskModal').classList.remove('active')">Annulla</button>
                     <button type="submit" class="btn btn-primary">Salva</button>

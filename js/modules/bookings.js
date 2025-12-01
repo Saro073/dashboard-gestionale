@@ -283,6 +283,21 @@ const BookingsModule = {
   },
 
   /**
+   * Ottiene check-in di oggi
+   * @returns {Array}
+   */
+  getTodayCheckIns() {
+    const bookings = this.getAll();
+    const today = new Date().toISOString().split('T')[0];
+
+    return bookings.filter(b => {
+      if (b.status === this.STATUS.CANCELLED) return false;
+      if (b.status === this.STATUS.BLOCKED) return false;
+      return b.checkIn === today;
+    });
+  },
+
+  /**
    * Ottiene check-out di oggi
    * @returns {Array}
    */
@@ -340,14 +355,14 @@ const BookingsModule = {
     let totalRevenue = 0;
 
     bookings.forEach(b => {
+      // Escludi completamente i blocchi dalle statistiche
       if (b.status !== this.STATUS.BLOCKED) {
         totalRevenue += b.totalAmount || 0;
-      }
-      
-      const checkIn = new Date(b.checkIn);
-      const checkOut = new Date(b.checkOut);
-      const monthStart = new Date(year, month, 1);
-      const monthEnd = new Date(year, month + 1, 0);
+        
+        const checkIn = new Date(b.checkIn);
+        const checkOut = new Date(b.checkOut);
+        const monthStart = new Date(year, month, 1);
+        const monthEnd = new Date(year, month + 1, 0);
 
       const effectiveStart = checkIn < monthStart ? monthStart : checkIn;
       const effectiveEnd = checkOut > monthEnd ? monthEnd : checkOut;

@@ -3,6 +3,7 @@
 
 class DashboardApp {
   constructor() {
+    this.currentEditingTaskId = null; // Per gestire edit task
     this.init();
   }
   
@@ -50,13 +51,29 @@ class DashboardApp {
     EventBus.on(EVENTS.USER_UPDATED, () => this.renderUsers());
     EventBus.on(EVENTS.USER_DELETED, () => this.renderUsers());
     
-    // Aggiorna attività recenti
+    // Aggiorna attività recenti E registro completo
     EventBus.on(EVENTS.CONTACT_CREATED, () => this.renderRecentActivity());
     EventBus.on(EVENTS.TASK_CREATED, () => this.renderRecentActivity());
     EventBus.on(EVENTS.NOTE_CREATED, () => this.renderRecentActivity());
     EventBus.on(EVENTS.DOCUMENT_UPLOADED, () => this.renderRecentActivity());
     EventBus.on(EVENTS.BOOKING_CREATED, () => this.renderRecentActivity());
     EventBus.on(EVENTS.USER_CREATED, () => this.renderRecentActivity());
+    
+    // Aggiorna anche activity log completo
+    EventBus.on(EVENTS.CONTACT_CREATED, () => this.renderActivityLog());
+    EventBus.on(EVENTS.CONTACT_DELETED, () => this.renderActivityLog());
+    EventBus.on(EVENTS.TASK_CREATED, () => this.renderActivityLog());
+    EventBus.on(EVENTS.TASK_DELETED, () => this.renderActivityLog());
+    EventBus.on(EVENTS.TASK_COMPLETED, () => this.renderActivityLog());
+    EventBus.on(EVENTS.NOTE_CREATED, () => this.renderActivityLog());
+    EventBus.on(EVENTS.NOTE_DELETED, () => this.renderActivityLog());
+    EventBus.on(EVENTS.DOCUMENT_UPLOADED, () => this.renderActivityLog());
+    EventBus.on(EVENTS.DOCUMENT_DELETED, () => this.renderActivityLog());
+    EventBus.on(EVENTS.BOOKING_CREATED, () => this.renderActivityLog());
+    EventBus.on(EVENTS.BOOKING_DELETED, () => this.renderActivityLog());
+    EventBus.on(EVENTS.USER_CREATED, () => this.renderActivityLog());
+    EventBus.on(EVENTS.USER_UPDATED, () => this.renderActivityLog());
+    EventBus.on(EVENTS.USER_DELETED, () => this.renderActivityLog());
   }
   
   /**
@@ -135,6 +152,9 @@ class DashboardApp {
     // Bookings
     BookingsHandlers.setupBookingsListeners();
     
+    // Activity Log
+    this.setupActivityLogListeners();
+    
     // Users (solo se admin)
     if (PermissionsManager.canCreateUsers()) {
       this.setupUsersListeners();
@@ -186,6 +206,7 @@ class DashboardApp {
     this.renderNotes();
     this.renderDocuments();
     this.renderRecentActivity();
+    this.renderActivityLog();
     
     // Render users solo se admin
     if (PermissionsManager.canCreateUsers()) {
@@ -202,10 +223,21 @@ class DashboardApp {
     const notesStats = NotesModule.getStats();
     const documentsStats = DocumentsModule.getStats();
     
+    // Statistiche bookings
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    const bookingsStats = BookingsModule.getStats(currentYear, currentMonth);
+    const todayCheckIns = BookingsModule.getTodayCheckIns();
+    const todayCheckOuts = BookingsModule.getTodayCheckOuts();
+    
     document.getElementById('contactsCount').textContent = contactsStats.total;
     document.getElementById('tasksCount').textContent = tasksStats.active;
     document.getElementById('notesCount').textContent = notesStats.total;
     document.getElementById('documentsCount').textContent = documentsStats.total;
+    document.getElementById('bookingsCount').textContent = bookingsStats.totalBookings;
+    document.getElementById('todayCheckIns').textContent = todayCheckIns.length;
+    document.getElementById('todayCheckOuts').textContent = todayCheckOuts.length;
   }
   
   /**
@@ -275,6 +307,8 @@ class DashboardApp {
           </div>
         </div>
         <div class="item-actions">
+          ${PermissionsManager.canEditTask(task) ? 
+            `<button class="btn btn-sm btn-secondary" onclick="app.editTask(${task.id})">Modifica</button>` : ''}
           ${PermissionsManager.canDeleteTask(task) ?
             `<button class="btn btn-sm btn-danger" onclick="app.deleteTask(${task.id})">Elimina</button>` : ''}
         </div>
@@ -424,12 +458,14 @@ class DashboardApp {
   }
   
   /**
-   * Render attività recenti
+   * Render attività recenti (widget overview)
    */
   renderRecentActivity() {
     if (!PermissionsManager.canViewLogs()) return;
     
     const container = document.getElementById('recentActivity');
+    if (!container) return;
+    
     const activities = ActivityLog.getRecent(5);
     
     if (activities.length === 0) {
@@ -449,6 +485,91 @@ class DashboardApp {
         </div>
       `;
     }).join('');
+  }
+  
+  /**
+   * Render activity log completo (sezione dedicata)
+   */
+  renderActivityLog() {
+    if (!PermissionsManager.canViewLogs()) {
+      const container = document.getElementById('activityLogList');
+      if (container) {
+        container.innerHTML = '<p class="empty-state">Non hai i permessi per visualizzare il registro</p>';
+      }
+      return;
+    }
+    
+    const container = document.getElementById('activityLogList');
+    if (!container) return;
+    
+    const actionFilter = document.getElementById('activityLogFilter')?.value || 'all';
+    const entityFilter = document.getElementById('activityLogEntityFilter')?.value || 'all';
+    const search = document.getElementById('activityLogSearch')?.value || '';
+    
+    let activities = ActivityLog.getAll();
+    
+    // Filtra per azione
+    if (actionFilter !== 'all') {
+      activities = ActivityLog.getByAction(actionFilter, 1000);
+    }
+    
+    // Filtra per tipo entità
+    if (entityFilter !== 'all') {
+      activities = ActivityLog.getByEntityType(entityFilter, 1000);
+    }
+    
+    // Cerca
+    if (search) {
+      const searchLower = search.toLowerCase();
+      activities = activities.filter(entry => {
+        const formatted = ActivityLog.formatEntry(entry);
+        return formatted.text.toLowerCase().includes(searchLower) ||
+               entry.username.toLowerCase().includes(searchLower);
+      });
+    }
+    
+    if (activities.length === 0) {
+      container.innerHTML = '<p class="empty-state">Nessuna attività trovata</p>';
+      return;
+    }
+    
+    container.innerHTML = activities.map(entry => {
+      const formatted = ActivityLog.formatEntry(entry);
+      return `
+        <div class="activity-item">
+          <div class="activity-icon">${formatted.icon}</div>
+          <div class="activity-content">
+            <p>${formatted.text}</p>
+            <span class="activity-time">${formatted.time}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+  
+  // ==================== ACTIVITY LOG LISTENERS ====================
+  
+  setupActivityLogListeners() {
+    const activityLogSearch = document.getElementById('activityLogSearch');
+    if (activityLogSearch) {
+      activityLogSearch.addEventListener('input', 
+        Utils.debounce(() => this.renderActivityLog(), 300)
+      );
+    }
+
+    const activityLogFilter = document.getElementById('activityLogFilter');
+    if (activityLogFilter) {
+      activityLogFilter.addEventListener('change', () => {
+        this.renderActivityLog();
+      });
+    }
+
+    const activityLogEntityFilter = document.getElementById('activityLogEntityFilter');
+    if (activityLogEntityFilter) {
+      activityLogEntityFilter.addEventListener('change', () => {
+        this.renderActivityLog();
+      });
+    }
   }
   
   // ==================== CONTACTS LISTENERS ====================
@@ -521,9 +642,29 @@ class DashboardApp {
     });
   }
   
-  openTaskModal() { 
+  openTaskModal() {
+    this.currentEditingTaskId = null;
+    document.getElementById('taskModalTitle').textContent = 'Aggiungi Task';
+    document.getElementById('taskForm').reset();
     document.getElementById('taskModal').classList.add('active');
-    EventBus.emit(EVENTS.MODAL_OPENED, { modal: 'task' });
+    EventBus.emit(EVENTS.MODAL_OPENED, { modal: 'task', mode: 'create' });
+  }
+  
+  editTask(id) {
+    const task = TasksModule.getById(id);
+    if (!task) return;
+    
+    // Imposta modalità edit
+    this.currentEditingTaskId = id;
+    
+    document.getElementById('taskModalTitle').textContent = 'Modifica Task';
+    document.getElementById('taskTitle').value = task.title;
+    document.getElementById('taskDescription').value = task.description || '';
+    document.getElementById('taskPriority').value = task.priority;
+    document.getElementById('taskDueDate').value = task.dueDate || '';
+    
+    document.getElementById('taskModal').classList.add('active');
+    EventBus.emit(EVENTS.MODAL_OPENED, { modal: 'task', mode: 'edit', id });
   }
   
   toggleTask(id) {
@@ -546,10 +687,21 @@ class DashboardApp {
       dueDate: document.getElementById('taskDueDate').value
     };
     
-    const result = TasksModule.create(data);
+    let result;
+    
+    if (this.currentEditingTaskId) {
+      // Update task esistente
+      result = TasksModule.update(this.currentEditingTaskId, data);
+      this.currentEditingTaskId = null;
+    } else {
+      // Create nuovo task
+      result = TasksModule.create(data);
+    }
+    
     if (result.success) {
       document.getElementById('taskModal').classList.remove('active');
       document.getElementById('taskForm').reset();
+      document.getElementById('taskModalTitle').textContent = 'Aggiungi Task';
       this.renderTasks();
     }
   }
@@ -797,13 +949,19 @@ class DashboardApp {
     if (!PermissionsManager.canViewLogs()) {
       const activitySection = document.querySelector('.recent-activity');
       if (activitySection) activitySection.style.display = 'none';
+      
+      const activityLogNavItem = document.getElementById('activityLogNavItem');
+      if (activityLogNavItem) activityLogNavItem.style.display = 'none';
+    } else {
+      // Mostra activity log nav-item se hai permessi
+      const activityLogNavItem = document.getElementById('activityLogNavItem');
+      if (activityLogNavItem) activityLogNavItem.style.display = 'block';
     }
     
     // Mostra sezione utenti solo ad admin
     if (PermissionsManager.canCreateUsers()) {
       const usersNavItem = document.getElementById('usersNavItem');
       if (usersNavItem) usersNavItem.style.display = 'block';
-      
     }
   }
   
