@@ -216,7 +216,7 @@ const app = {
     row.innerHTML = `
       <input type="email" class="email-value" placeholder="email@esempio.com" required>
       <input type="text" class="email-label" placeholder="Etichetta (es: Lavoro)" required>
-      <button type="button" class="btn-remove-field" onclick="app.removeEmailField(this)">✕</button>
+      <button type="button" class="btn-remove-field" onclick="app.removeEmailField(this)"✕</button>
     `;
     container.appendChild(row);
   },
