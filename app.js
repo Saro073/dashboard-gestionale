@@ -575,6 +575,7 @@ function renderNotes(filter = 'all') {
       <p>${Utils.escapeHtml(note.content.substring(0, 150))}${note.content.length > 150 ? '...' : ''}</p>
       <div class="item-meta">
         <span class="badge">${Utils.escapeHtml(note.category)}</span>
+                    ${note.urgent ? '<span class="badge urgent-badge">🚨 URGENTE</span>' : ''}
         <span>${new Date(note.createdAt).toLocaleDateString('it-IT')}</span>
       </div>
       <div class="item-actions">
@@ -808,7 +809,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const noteData = {
       title: document.getElementById('noteTitle').value,
       content: document.getElementById('noteContent').value,
-      category: document.getElementById('noteCategory').value
+      category: document.getElementById('noteCategory').value,
+        urgent: document.getElementById('noteUrgent').checked
     };
     addNote(noteData);
     closeModal('noteModal');
