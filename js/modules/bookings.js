@@ -364,12 +364,11 @@ const BookingsModule = {
         const monthStart = new Date(year, month, 1);
         const monthEnd = new Date(year, month + 1, 0);
 
-        const effectiveStart = checkIn < monthStart ? monthStart : checkIn;
-        const effectiveEnd = checkOut > monthEnd ? monthEnd : checkOut;
+      const effectiveStart = checkIn < monthStart ? monthStart : checkIn;
+      const effectiveEnd = checkOut > monthEnd ? monthEnd : checkOut;
 
-        const days = Math.ceil((effectiveEnd - effectiveStart) / (1000 * 60 * 60 * 24));
-        occupiedDays += Math.max(0, days);
-      }
+      const days = Math.ceil((effectiveEnd - effectiveStart) / (1000 * 60 * 60 * 24));
+      occupiedDays += Math.max(0, days);
     });
 
     return {
