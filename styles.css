@@ -558,6 +558,25 @@ textarea {
 .badge-proprietario { background: #ede9fe; color: #6d28d9; }
 .badge-cliente { background: #dbeafe; color: #1e40af; }
 .badge-fornitore { background: #fef3c7; color: #92400e; }
+
+.urgent-badge {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    font-weight: 700;
+    animation: urgentPulse 2s ease-in-out infinite;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+}
+
+@keyframes urgentPulse {
+    0%, 100% { 
+        transform: scale(1);
+        box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+    }
+    50% { 
+        transform: scale(1.05);
+        box-shadow: 0 0 20px rgba(239, 68, 68, 0.8);
+    }
+}
 .badge-partner { background: #d1fae5; color: #065f46; }
 .badge-alta { background: #fee2e2; color: #991b1b; }
 .badge-critical { background: #7f1d1d; color: #ffffff; }
