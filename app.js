@@ -613,8 +613,6 @@ function updateNote(id, noteData) {
   }
 }
 
-let editingNoteId = null;
-
 function editNote(id) {
   const note = notes.find(n => n.id === id);
   if (!note) {
