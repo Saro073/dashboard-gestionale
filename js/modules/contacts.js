@@ -72,8 +72,9 @@ const ContactsModule = {
       return { valid: false, message: 'Formato emails non valido' };
     }
 
+    // Permettiamo array vuoto (validazione combinata con phones nel create)
     if (emails.length === 0) {
-      return { valid: false, message: 'Almeno un\'email è richiesta' };
+      return { valid: true, message: '' };
     }
 
     for (let i = 0; i < emails.length; i++) {
@@ -105,8 +106,9 @@ const ContactsModule = {
       return { valid: false, message: 'Formato telefoni non valido' };
     }
 
+    // Permettiamo array vuoto (validazione combinata con emails nel create)
     if (phones.length === 0) {
-      return { valid: false, message: 'Almeno un telefono è richiesto' };
+      return { valid: true, message: '' };
     }
 
     for (let i = 0; i < phones.length; i++) {
@@ -158,6 +160,16 @@ const ContactsModule = {
     if (!phoneValidation.valid) {
       NotificationService.error(phoneValidation.message);
       return { success: false, contact: null, message: phoneValidation.message };
+    }
+
+    // Validazione combinata: almeno uno tra email O telefono deve essere fornito
+    const hasValidEmail = contactData.emails && contactData.emails.length > 0;
+    const hasValidPhone = contactData.phones && contactData.phones.length > 0;
+    
+    if (!hasValidEmail && !hasValidPhone) {
+      const message = 'Almeno un\'email O un telefono è richiesto';
+      NotificationService.error(message);
+      return { success: false, contact: null, message };
     }
 
     // Crea contatto con nuovo schema
@@ -248,6 +260,18 @@ const ContactsModule = {
       }
     }
 
+    // Validazione combinata: almeno uno tra email O telefono deve essere presente
+    const finalEmails = updates.emails !== undefined ? updates.emails : contact.emails;
+    const finalPhones = updates.phones !== undefined ? updates.phones : contact.phones;
+    const hasValidEmail = finalEmails && finalEmails.length > 0;
+    const hasValidPhone = finalPhones && finalPhones.length > 0;
+    
+    if (!hasValidEmail && !hasValidPhone) {
+      const message = 'Almeno un\'email O un telefono è richiesto';
+      NotificationService.error(message);
+      return { success: false, contact: null, message };
+    }
+
     // Aggiorna
     const currentUser = AuthManager.getCurrentUser();
 
@@ -322,7 +346,9 @@ const ContactsModule = {
   filterByCategory(category) {
     if (category === 'all') return this.getAll();
     const contacts = this.getAll();
-    return contacts.filter(c => c.category === category);
+    return contacts.filter(c => 
+      c.category && c.category.toLowerCase() === category.toLowerCase()
+    );
   },
 
   /**

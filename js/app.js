@@ -18,9 +18,20 @@ class DashboardApp {
     
     // Inizializza autenticazione
     AuthManager.init();
+    
+    // Inizializza categorie con defaults e migrazione
+    if (CategoryManager && typeof CategoryManager.initializeDefaults === 'function') {
+      CategoryManager.initializeDefaults();
+    }
+    
     // Migra vecchi contatti se necessario
     if (ContactsModule && typeof ContactsModule.migrateOldContacts === 'function') {
       ContactsModule.migrateOldContacts();
+    }
+    
+    // Migra categorie dai contatti esistenti
+    if (CategoryManager && typeof CategoryManager.migrateFromContacts === 'function') {
+      CategoryManager.migrateFromContacts();
     }
     
     // Verifica autenticazione
@@ -56,6 +67,19 @@ class DashboardApp {
     EventBus.on(EVENTS.USER_CREATED, () => this.renderUsers());
     EventBus.on(EVENTS.USER_UPDATED, () => this.renderUsers());
     EventBus.on(EVENTS.USER_DELETED, () => this.renderUsers());
+    
+    // Category admin updates
+    EventBus.on(EVENTS.CATEGORY_CREATED, () => {
+      this.renderCategoryAdmin();
+      this.populateContactFilter();
+    });
+    EventBus.on(EVENTS.CATEGORY_DELETED, () => {
+      this.renderCategoryAdmin();
+      this.populateContactFilter();
+    });
+    EventBus.on(EVENTS.CONTACT_CREATED, () => this.renderCategoryAdmin());
+    EventBus.on(EVENTS.CONTACT_UPDATED, () => this.renderCategoryAdmin());
+    EventBus.on(EVENTS.CONTACT_DELETED, () => this.renderCategoryAdmin());
     
     // Aggiorna attività recenti E registro completo
     EventBus.on(EVENTS.CONTACT_CREATED, () => this.renderRecentActivity());
@@ -164,6 +188,7 @@ class DashboardApp {
     // Users (solo se admin)
     if (PermissionsManager.canCreateUsers()) {
       this.setupUsersListeners();
+      this.setupCategoryAdminListeners();
     }
 
     // Modal close handlers: ensure editing states reset when modal closed
@@ -239,6 +264,7 @@ class DashboardApp {
    */
   renderAll() {
     this.updateStats();
+    this.populateContactFilter();
     this.renderContacts();
     this.renderTasks();
     this.renderNotes();
@@ -249,6 +275,7 @@ class DashboardApp {
     // Render users solo se admin
     if (PermissionsManager.canCreateUsers()) {
       this.renderUsers();
+      this.renderCategoryAdmin();
     }
   }
   
@@ -278,6 +305,33 @@ class DashboardApp {
     document.getElementById('todayCheckOuts').textContent = todayCheckOuts.length;
   }
   
+  /**
+   * Popola il filtro categorie nella toolbar contatti
+   */
+  populateContactFilter() {
+    const filterSelect = document.getElementById('contactFilter');
+    if (!filterSelect) return;
+    
+    const currentValue = filterSelect.value; // Salva selezione corrente
+    const categories = CategoryManager.getAll();
+    
+    // Mantieni solo l'opzione "Tutti"
+    filterSelect.innerHTML = '<option value="all">Tutti</option>';
+    
+    // Aggiungi le categorie dinamiche
+    categories.forEach(cat => {
+      const option = document.createElement('option');
+      option.value = cat.toLowerCase();
+      option.textContent = cat;
+      filterSelect.appendChild(option);
+    });
+    
+    // Ripristina selezione se ancora valida
+    if (currentValue && currentValue !== 'all') {
+      filterSelect.value = currentValue;
+    }
+  }
+
   /**
    * Render contatti
    */
@@ -642,6 +696,7 @@ class DashboardApp {
   
   openContactModal() { 
     this.currentEditingContactId = null;
+    document.getElementById('contactModalTitle').textContent = 'Aggiungi Contatto';
     document.getElementById('contactForm').reset();
     // Reset dynamic email/phone inputs to one row
     const emailsContainer = document.getElementById('emailsContainer');
@@ -650,6 +705,7 @@ class DashboardApp {
     phonesContainer.innerHTML = '';
     this.addEmailField();
     this.addPhoneField();
+    this.populateCategoryDatalist();
     document.getElementById('contactModal').classList.add('active');
     EventBus.emit(EVENTS.MODAL_OPENED, { modal: 'contact' });
   }
@@ -697,6 +753,7 @@ class DashboardApp {
       phonesContainer.appendChild(row);
     });
 
+    this.populateCategoryDatalist();
     document.getElementById('contactModal').classList.add('active');
     EventBus.emit(EVENTS.MODAL_OPENED, { modal: 'contact', id });
   }
@@ -711,8 +768,13 @@ class DashboardApp {
   saveContact() {
     const name = document.getElementById('contactName').value;
     const company = document.getElementById('contactCompany').value;
-    const category = document.getElementById('contactCategory').value;
+    const category = document.getElementById('contactCategory').value.trim();
     const notes = document.getElementById('contactNotes').value;
+
+    // Aggiungi nuova categoria se non esiste
+    if (category && !CategoryManager.exists(category)) {
+      CategoryManager.add(category);
+    }
 
     const emails = Array.from(document.querySelectorAll('#emailsContainer .multi-input-row')).map(row => ({
       value: row.querySelector('.email-value').value.trim(),
@@ -775,6 +837,15 @@ class DashboardApp {
     if (container.children.length > 0) {
       btn.closest('.multi-input-row').remove();
     }
+  }
+
+  populateCategoryDatalist() {
+    const datalist = document.getElementById('contactCategoryList');
+    const categories = CategoryManager.getAll();
+    
+    datalist.innerHTML = categories.map(cat => 
+      `<option value="${Utils.escapeHtml(cat)}">`
+    ).join('');
   }
   
   // ==================== TASKS LISTENERS ====================
@@ -997,6 +1068,122 @@ class DashboardApp {
     if (confirm('Elimina questo documento?')) {
       DocumentsModule.delete(id);
       this.renderDocuments();
+    }
+  }
+  
+  // ==================== CATEGORY ADMIN ====================
+  
+  setupCategoryAdminListeners() {
+    // Event delegation sul document per gestire elementi dinamici
+    document.addEventListener('click', (e) => {
+      // Verifica se il click è su un pulsante delete categoria o su un suo figlio
+      const btn = e.target.closest('.btn-delete-category');
+      if (btn && !btn.disabled) {
+        const categoryName = btn.dataset.category;
+        if (categoryName) {
+          this.deleteCategoryWithConfirmation(categoryName);
+        }
+      }
+    });
+
+    // Add category button
+    const addCategoryBtn = document.getElementById('addCategoryBtn');
+    const newCategoryInput = document.getElementById('newCategoryInput');
+    
+    if (addCategoryBtn && newCategoryInput) {
+      addCategoryBtn.addEventListener('click', () => {
+        this.handleAddCategory(newCategoryInput);
+      });
+      
+      // Enter key support
+      newCategoryInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          this.handleAddCategory(newCategoryInput);
+        }
+      });
+    }
+  }
+  
+  handleAddCategory(inputElement) {
+    const categoryName = inputElement.value.trim();
+    
+    if (!categoryName) {
+      this.notificationService.show('Inserisci un nome per la categoria', 'error');
+      return;
+    }
+    
+    if (CategoryManager.exists(categoryName)) {
+      this.notificationService.show('Questa categoria esiste già', 'error');
+      return;
+    }
+    
+    try {
+      CategoryManager.add(categoryName);
+      inputElement.value = '';
+      inputElement.focus();
+      this.notificationService.show(`Categoria "${categoryName}" creata con successo`, 'success');
+      this.renderCategoryAdmin();
+      this.populateContactFilter();
+    } catch (error) {
+      console.error('Error adding category:', error);
+      this.notificationService.show('Errore nella creazione della categoria', 'error');
+    }
+  }
+  
+  renderCategoryAdmin() {
+    const container = document.getElementById('categoryAdminList');
+    if (!container) return;
+    
+    const categoriesWithUsage = CategoryManager.getAllWithUsage();
+    
+    if (categoriesWithUsage.length === 0) {
+      container.innerHTML = '<p class="empty-state">Nessuna categoria presente</p>';
+      return;
+    }
+    
+    container.innerHTML = categoriesWithUsage.map(cat => `
+      <div class="category-admin-item">
+        <div class="category-info">
+          <h3 class="category-name">${Utils.escapeHtml(cat.name)}</h3>
+          <div class="category-usage">
+            <span class="category-usage-badge ${cat.count === 0 ? 'unused' : 'in-use'}">
+              ${cat.count} ${cat.count === 1 ? 'contatto' : 'contatti'}
+            </span>
+          </div>
+        </div>
+        <div class="category-actions">
+          <button 
+            class="btn-delete-category" 
+            data-category="${Utils.escapeHtml(cat.name)}"
+            ${cat.canDelete ? '' : 'disabled'}
+            title="${cat.canDelete ? 'Elimina categoria' : 'Impossibile eliminare: categoria in uso'}"
+          >
+            ${cat.canDelete ? '🗑️ Elimina' : '🔒 In uso'}
+          </button>
+        </div>
+      </div>
+    `).join('');
+  }
+  
+  deleteCategoryWithConfirmation(categoryName) {
+    const usageCount = CategoryManager.getUsageCount(categoryName);
+    
+    if (usageCount > 0) {
+      NotificationService.error(`Impossibile eliminare "${categoryName}": categoria utilizzata da ${usageCount} contatti`);
+      return;
+    }
+    
+    const confirmed = confirm(
+      `Sei sicuro di voler eliminare la categoria "${categoryName}"?\n\nQuesta azione è irreversibile.`
+    );
+    
+    if (confirmed) {
+      const result = CategoryManager.remove(categoryName);
+      if (result.success) {
+        this.renderCategoryAdmin();
+        NotificationService.success(`Categoria "${categoryName}" eliminata con successo`);
+      }
     }
   }
   

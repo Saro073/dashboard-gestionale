@@ -10,6 +10,7 @@ const CONFIG = {
     USERS: 'dashboard_users',
     CURRENT_USER: 'dashboard_current_user',
     CONTACTS: 'dashboard_contacts',
+    CONTACT_CATEGORIES: 'dashboard_contact_categories',
     TASKS: 'dashboard_tasks',
     NOTES: 'dashboard_notes',
     DOCUMENTS: 'dashboard_documents',

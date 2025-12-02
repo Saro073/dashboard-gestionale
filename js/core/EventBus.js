@@ -147,6 +147,10 @@ const EVENTS = {
   CONTACT_DELETED: 'contact:deleted',
   CONTACTS_LOADED: 'contacts:loaded',
 
+  // Categorie Contatti
+  CATEGORY_CREATED: 'category:created',
+  CATEGORY_DELETED: 'category:deleted',
+
   // Task
   TASK_CREATED: 'task:created',
   TASK_UPDATED: 'task:updated',

@@ -20,7 +20,7 @@ const Router = {
   /**
    * Sezioni disponibili
    */
-  sections: ['overview', 'contacts', 'tasks', 'notes', 'documents', 'bookings', 'activityLog', 'users'],
+  sections: ['overview', 'contacts', 'tasks', 'notes', 'documents', 'bookings', 'activityLog', 'users', 'categoryAdmin'],
 
   /**
    * Callback da eseguire al cambio di sezione
@@ -134,7 +134,8 @@ const Router = {
       documents: 'Documenti',
       bookings: 'Prenotazioni',
       activityLog: 'Registro Attività',
-      users: 'Gestione Utenti'
+      users: 'Gestione Utenti',
+      categoryAdmin: 'Gestione Categorie'
     };
 
     const titleElement = document.getElementById('sectionTitle');
