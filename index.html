@@ -97,49 +97,52 @@
             <!-- Overview Section -->
             <div id="overviewSection" class="content-section active">
                 <div class="stats-grid">
-                    <div class="stat-card">
+                    <div class="stat-card" onclick="Router.navigate('contacts')">
                         <div class="stat-icon">👥</div>
                         <div class="stat-info">
                             <h3 id="contactsCount">0</h3>
                             <p>Contatti</p>
                         </div>
                     </div>
-                    <div class="stat-card">
+                    <div class="stat-card" onclick="Router.navigate('tasks')">
                         <div class="stat-icon">✓</div>
                         <div class="stat-info">
                             <h3 id="tasksCount">0</h3>
                             <p>Task Attivi</p>
+                            <div id="tasksPreview" class="stat-preview"></div>
                         </div>
                     </div>
-                    <div class="stat-card">
+                    <div class="stat-card" onclick="Router.navigate('notes')">
                         <div class="stat-icon">📝</div>
                         <div class="stat-info">
                             <h3 id="notesCount">0</h3>
                             <p>Note</p>
+                            <div id="notesPreview" class="stat-preview"></div>
                         </div>
                     </div>
-                    <div class="stat-card">
+                    <div class="stat-card" onclick="Router.navigate('documents')">
                         <div class="stat-icon">📄</div>
                         <div class="stat-info">
                             <h3 id="documentsCount">0</h3>
                             <p>Documenti</p>
                         </div>
                     </div>
-                    <div class="stat-card">
+                    <div class="stat-card" onclick="Router.navigate('bookings')">
                         <div class="stat-icon">📅</div>
                         <div class="stat-info">
                             <h3 id="bookingsCount">0</h3>
                             <p>Prenotazioni</p>
+                            <div id="bookingsPreview" class="stat-preview"></div>
                         </div>
                     </div>
-                    <div class="stat-card">
+                    <div class="stat-card" onclick="Router.navigate('bookings')">
                         <div class="stat-icon">🔔</div>
                         <div class="stat-info">
                             <h3 id="todayCheckIns">0</h3>
                             <p>Check-in Oggi</p>
                         </div>
                     </div>
-                    <div class="stat-card">
+                    <div class="stat-card" onclick="Router.navigate('bookings')">
                         <div class="stat-icon">🚺</div>
                         <div class="stat-info">
                             <h3 id="todayCheckOuts">0</h3>

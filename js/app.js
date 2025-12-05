@@ -335,6 +335,74 @@ class DashboardApp {
     document.getElementById('bookingsCount').textContent = bookingsStats.totalBookings;
     document.getElementById('todayCheckIns').textContent = todayCheckIns.length;
     document.getElementById('todayCheckOuts').textContent = todayCheckOuts.length;
+    
+    // Update previews
+    this.updateStatsPreview();
+  }
+  
+  /**
+   * Aggiorna preview nelle stat card dell'overview
+   */
+  updateStatsPreview() {
+    // Tasks preview - mostra top 3 per priorità
+    const tasksPreview = document.getElementById('tasksPreview');
+    if (tasksPreview) {
+      const tasks = TasksModule.getAll()
+        .filter(t => !t.completed)
+        .sort((a, b) => {
+          const priorities = { critical: 4, alta: 3, media: 2, bassa: 1 };
+          return (priorities[b.priority] || 0) - (priorities[a.priority] || 0);
+        })
+        .slice(0, 3);
+      
+      if (tasks.length > 0) {
+        tasksPreview.innerHTML = tasks.map(task => `
+          <div class="stat-preview-item">
+            <span class="priority-badge ${task.priority}">${task.priority}</span>
+            <span>${Utils.escapeHtml(task.title)}</span>
+          </div>
+        `).join('');
+      } else {
+        tasksPreview.innerHTML = '';
+      }
+    }
+    
+    // Notes preview - mostra 3 note più recenti
+    const notesPreview = document.getElementById('notesPreview');
+    if (notesPreview) {
+      const notes = NotesModule.getAll()
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(0, 3);
+      
+      if (notes.length > 0) {
+        notesPreview.innerHTML = notes.map(note => `
+          <div class="stat-preview-item">
+            <span>• ${Utils.escapeHtml(note.title).substring(0, 30)}${note.title.length > 30 ? '...' : ''}</span>
+          </div>
+        `).join('');
+      } else {
+        notesPreview.innerHTML = '';
+      }
+    }
+    
+    // Bookings preview - prossimi check-in
+    const bookingsPreview = document.getElementById('bookingsPreview');
+    if (bookingsPreview) {
+      const upcoming = BookingsModule.getAll()
+        .filter(b => b.status === 'confirmed' && new Date(b.checkIn) > new Date())
+        .sort((a, b) => new Date(a.checkIn) - new Date(b.checkIn))
+        .slice(0, 3);
+      
+      if (upcoming.length > 0) {
+        bookingsPreview.innerHTML = upcoming.map(booking => `
+          <div class="stat-preview-item">
+            <span>${new Date(booking.checkIn).toLocaleDateString('it-IT', {day: 'numeric', month: 'short'})} - ${Utils.escapeHtml(booking.guestName)}</span>
+          </div>
+        `).join('');
+      } else {
+        bookingsPreview.innerHTML = '';
+      }
+    }
   }
   
   /**

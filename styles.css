@@ -461,6 +461,41 @@ textarea {
   display: flex;
   align-items: center;
   gap: 1rem;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  position: relative;
+}
+
+.stat-card::after {
+  content: '→';
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.5rem;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: all 0.2s ease;
+}
+
+.stat-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-3px);
+  border-color: var(--primary-color);
+}
+
+.stat-card:hover::after {
+  opacity: 1;
+  transform: translateY(-50%) translateX(3px);
+}
+
+.stat-card:active {
+  transform: translateY(-1px);
 }
 
 .stat-icon {
@@ -1127,16 +1162,28 @@ textarea {
 }
 
 .modal-footer .btn-secondary {
-  background-color: #f1f5f9;
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
+  background-color: #e2e8f0;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  font-weight: 600;
+}
+
+[data-theme="dark"] .modal-footer .btn-secondary {
+  background-color: #334155;
+  color: #f1f5f9;
+  border: 1px solid #475569;
 }
 
 .modal-footer .btn-secondary:hover {
-  background-color: #e2e8f0;
-  border-color: var(--text-secondary);
+  background-color: #cbd5e1;
+  border-color: #94a3b8;
   transform: translateY(-1px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] .modal-footer .btn-secondary:hover {
+  background-color: #475569;
+  border-color: #64748b;
 }
 
 .modal-footer .btn-primary {
@@ -1852,4 +1899,51 @@ textarea {
 
 #transactionCategory option {
   padding: 0.5rem;
+}
+
+/* Stat Card Preview */
+.stat-preview {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  max-height: 60px;
+  overflow: hidden;
+}
+
+.stat-preview-item {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stat-preview-item .priority-badge {
+  font-size: 0.625rem;
+  padding: 0.125rem 0.375rem;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+}
+
+.stat-preview-item .priority-badge.critical {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--danger-color);
+}
+
+.stat-preview-item .priority-badge.alta {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--warning-color);
+}
+
+.stat-preview-item .priority-badge.media {
+  background: rgba(37, 99, 235, 0.15);
+  color: var(--primary-color);
+}
+
+.stat-preview-item span {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
