@@ -228,11 +228,20 @@ class DashboardApp {
     // Bookings
     BookingsHandlers.setupBookingsListeners();
     
+    // Cleaning
+    this.setupCleaningListeners();
+    
+    // Maintenance
+    this.setupMaintenanceListeners();
+    
     // Accounting
     this.setupAccountingListeners();
     
     // Analytics
     this.setupAnalyticsListeners();
+    
+    // Settings
+    this.setupSettingsListeners();
     
     // Activity Log
     this.setupActivityLogListeners();
@@ -340,8 +349,11 @@ class DashboardApp {
     this.renderTasks();
     this.renderNotes();
     this.renderDocuments();
+    this.renderCleaning();
+    this.renderMaintenance();
     this.renderAccounting();
     this.renderAnalytics();
+    this.renderSettings();
     this.renderRecentActivity();
     this.renderActivityLog();
     
@@ -1674,6 +1686,625 @@ class DashboardApp {
     } catch (error) {
       ErrorHandler.handle(error, 'App.exportCharts', true);
     }
+  }
+  
+  // ==================== CLEANING ====================
+  
+  renderCleaning() {
+    const statusFilter = document.getElementById('cleaningStatusFilter')?.value || 'all';
+    const dateFilter = document.getElementById('cleaningDateFilter')?.value || '';
+    const search = document.getElementById('cleaningSearch')?.value.toLowerCase() || '';
+    
+    let cleanings = CleaningModule.filterByStatus(statusFilter);
+    
+    if (dateFilter) {
+      cleanings = cleanings.filter(c => c.scheduledDate === dateFilter);
+    }
+    
+    if (search) {
+      cleanings = cleanings.filter(c => 
+        c.guestName?.toLowerCase().includes(search) ||
+        c.notes?.toLowerCase().includes(search)
+      );
+    }
+    
+    // Update stats
+    const stats = CleaningModule.getStats();
+    document.getElementById('cleaningScheduled').textContent = CleaningModule.filterByStatus('scheduled').length;
+    document.getElementById('cleaningInProgress').textContent = CleaningModule.filterByStatus('in-progress').length;
+    document.getElementById('cleaningCompleted').textContent = stats.completed;
+    document.getElementById('cleaningAvgDuration').textContent = `${stats.avgDuration} min`;
+    
+    // Render list
+    const container = document.getElementById('cleaningList');
+    if (!container) return;
+    
+    if (cleanings.length === 0) {
+      container.innerHTML = '<p class="empty-state">Nessuna pulizia trovata</p>';
+      return;
+    }
+    
+    cleanings.sort((a, b) => new Date(a.scheduledDate) - new Date(b.scheduledDate));
+    
+    container.innerHTML = cleanings.map(c => this.renderCleaningCard(c)).join('');
+  }
+  
+  renderCleaningCard(cleaning) {
+    const statusLabels = { scheduled: 'Programmata', 'in-progress': 'In Corso', completed: 'Completata' };
+    const statusColors = { scheduled: '#3b82f6', 'in-progress': '#f59e0b', completed: '#10b981' };
+    const progress = CleaningModule.getChecklistProgress(cleaning);
+    
+    return `
+      <div class="item-card">
+        <div class="item-header">
+          <h3>${cleaning.guestName || 'Pulizia Standard'}</h3>
+          <div class="item-actions">
+            <button class="btn-icon" onclick="app.openChecklistModal(${cleaning.id})" title="Checklist">📋</button>
+            <button class="btn-icon" onclick="app.editCleaning(${cleaning.id})" title="Modifica">✏️</button>
+            <button class="btn-icon" onclick="app.deleteCleaning(${cleaning.id})" title="Elimina">🗑️</button>
+          </div>
+        </div>
+        <div class="item-body">
+          <p><strong>📅 Data:</strong> ${Utils.formatDate(new Date(cleaning.scheduledDate))} alle ${cleaning.scheduledTime}</p>
+          <p><strong>👤 Assegnata a:</strong> ${cleaning.assignedTo || 'Non assegnata'}</p>
+          <p><strong>⏱️ Durata stimata:</strong> ${cleaning.estimatedDuration} min</p>
+          <p><strong>💰 Costo:</strong> €${cleaning.cost}</p>
+          <p><strong>📊 Progresso:</strong> ${progress}%</p>
+          ${cleaning.notes ? `<p><strong>Note:</strong> ${Utils.escapeHtml(cleaning.notes)}</p>` : ''}
+        </div>
+        <div class="item-footer">
+          <span class="badge" style="background: ${statusColors[cleaning.status]}; color: white;">
+            ${statusLabels[cleaning.status]}
+          </span>
+          ${cleaning.status === 'scheduled' ? 
+            `<button class="btn btn-sm btn-success" onclick="app.startCleaning(${cleaning.id})">▶️ Inizia</button>` : ''}
+          ${cleaning.status === 'in-progress' ? 
+            `<button class="btn btn-sm btn-primary" onclick="app.completeCleaning(${cleaning.id})">✅ Completa</button>` : ''}
+        </div>
+      </div>
+    `;
+  }
+  
+  setupCleaningListeners() {
+    const addBtn = document.getElementById('addCleaningBtn');
+    if (addBtn) {
+      addBtn.addEventListener('click', () => this.openCleaningModal());
+    }
+    
+    const form = document.getElementById('cleaningForm');
+    if (form) {
+      form.addEventListener('submit', (e) => this.saveCleaning(e));
+    }
+    
+    const statusFilter = document.getElementById('cleaningStatusFilter');
+    if (statusFilter) {
+      statusFilter.addEventListener('change', () => this.renderCleaning());
+    }
+    
+    const dateFilter = document.getElementById('cleaningDateFilter');
+    if (dateFilter) {
+      dateFilter.addEventListener('change', () => this.renderCleaning());
+    }
+    
+    const search = document.getElementById('cleaningSearch');
+    if (search) {
+      search.addEventListener('input', Utils.debounce(() => this.renderCleaning(), 300));
+    }
+    
+    // Checklist actions
+    const startBtn = document.getElementById('startCleaningBtn');
+    if (startBtn) {
+      startBtn.addEventListener('click', () => {
+        if (this.currentCleaningId) {
+          this.startCleaning(this.currentCleaningId);
+        }
+      });
+    }
+    
+    const completeBtn = document.getElementById('completeCleaningBtn');
+    if (completeBtn) {
+      completeBtn.addEventListener('click', () => {
+        if (this.currentCleaningId) {
+          this.completeCleaning(this.currentCleaningId);
+        }
+      });
+    }
+  }
+  
+  openCleaningModal(cleaningId = null) {
+    this.currentEditingCleaningId = cleaningId;
+    const modal = document.getElementById('cleaningModal');
+    const title = document.getElementById('cleaningModalTitle');
+    
+    if (cleaningId) {
+      const cleaning = CleaningModule.getById(cleaningId);
+      if (!cleaning) return;
+      
+      title.textContent = 'Modifica Pulizia';
+      document.getElementById('cleaningDate').value = cleaning.scheduledDate;
+      document.getElementById('cleaningTime').value = cleaning.scheduledTime;
+      document.getElementById('cleaningGuestName').value = cleaning.guestName || '';
+      document.getElementById('cleaningBookingId').value = cleaning.bookingId || '';
+      document.getElementById('cleaningAssignedTo').value = cleaning.assignedTo || '';
+      document.getElementById('cleaningPriority').value = cleaning.priority;
+      document.getElementById('cleaningDuration').value = cleaning.estimatedDuration;
+      document.getElementById('cleaningCost').value = cleaning.cost;
+      document.getElementById('cleaningNotes').value = cleaning.notes || '';
+    } else {
+      title.textContent = 'Nuova Pulizia';
+      document.getElementById('cleaningForm').reset();
+      document.getElementById('cleaningTime').value = '14:00';
+      document.getElementById('cleaningDuration').value = '120';
+      document.getElementById('cleaningCost').value = '40';
+    }
+    
+    // Populate assigned to select
+    this.populateCleaningStaff();
+    
+    modal.classList.add('active');
+  }
+  
+  populateCleaningStaff() {
+    const select = document.getElementById('cleaningAssignedTo');
+    if (!select) return;
+    
+    const users = UsersModule ? UsersModule.getAll() : [];
+    const staffOptions = users.map(u => 
+      `<option value="${u.username}">${u.username}</option>`
+    ).join('');
+    
+    select.innerHTML = '<option value="">Non assegnata</option>' + staffOptions;
+  }
+  
+  saveCleaning(e) {
+    e.preventDefault();
+    
+    const cleaningData = {
+      scheduledDate: document.getElementById('cleaningDate').value,
+      scheduledTime: document.getElementById('cleaningTime').value,
+      guestName: document.getElementById('cleaningGuestName').value,
+      bookingId: document.getElementById('cleaningBookingId').value || null,
+      assignedTo: document.getElementById('cleaningAssignedTo').value || null,
+      priority: document.getElementById('cleaningPriority').value,
+      estimatedDuration: parseInt(document.getElementById('cleaningDuration').value),
+      cost: parseFloat(document.getElementById('cleaningCost').value),
+      notes: document.getElementById('cleaningNotes').value
+    };
+    
+    try {
+      if (this.currentEditingCleaningId) {
+        CleaningModule.update(this.currentEditingCleaningId, cleaningData);
+        NotificationService.success('Pulizia aggiornata!');
+      } else {
+        CleaningModule.create(cleaningData);
+        NotificationService.success('Pulizia creata!');
+      }
+      
+      document.getElementById('cleaningModal').classList.remove('active');
+      this.currentEditingCleaningId = null;
+      this.renderCleaning();
+    } catch (error) {
+      ErrorHandler.handle(error, 'App.saveCleaning', true);
+    }
+  }
+  
+  editCleaning(id) {
+    this.openCleaningModal(id);
+  }
+  
+  deleteCleaning(id) {
+    if (!confirm('Eliminare questa pulizia?')) return;
+    
+    CleaningModule.delete(id);
+    NotificationService.success('Pulizia eliminata');
+    this.renderCleaning();
+  }
+  
+  startCleaning(id) {
+    CleaningModule.start(id);
+    NotificationService.success('Pulizia iniziata!');
+    this.renderCleaning();
+    document.getElementById('checklistModal')?.classList.remove('active');
+  }
+  
+  completeCleaning(id) {
+    if (!confirm('Completare questa pulizia?')) return;
+    
+    CleaningModule.complete(id);
+    NotificationService.success('Pulizia completata!');
+    this.renderCleaning();
+    document.getElementById('checklistModal')?.classList.remove('active');
+  }
+  
+  openChecklistModal(cleaningId) {
+    this.currentCleaningId = cleaningId;
+    const cleaning = CleaningModule.getById(cleaningId);
+    if (!cleaning) return;
+    
+    const modal = document.getElementById('checklistModal');
+    const title = document.getElementById('checklistModalTitle');
+    title.textContent = `Checklist - ${cleaning.guestName || 'Pulizia Standard'}`;
+    
+    this.renderChecklist(cleaning);
+    modal.classList.add('active');
+  }
+  
+  renderChecklist(cleaning) {
+    const progress = CleaningModule.getChecklistProgress(cleaning);
+    document.getElementById('checklistProgressBar').style.width = `${progress}%`;
+    document.getElementById('checklistProgressText').textContent = `${progress}% Completato`;
+    
+    const categories = {
+      bedroom: '🛏️ Camera',
+      bathroom: '🚿 Bagno',
+      kitchen: '🍳 Cucina',
+      living: '🛋️ Soggiorno',
+      general: '🏠 Generale'
+    };
+    
+    const groupedItems = {};
+    cleaning.checklist.forEach(item => {
+      if (!groupedItems[item.category]) {
+        groupedItems[item.category] = [];
+      }
+      groupedItems[item.category].push(item);
+    });
+    
+    const container = document.getElementById('checklistItems');
+    container.innerHTML = Object.entries(groupedItems).map(([category, items]) => `
+      <div class="checklist-category">
+        <h3>${categories[category] || category}</h3>
+        ${items.map(item => `
+          <label class="checklist-item">
+            <input type="checkbox" 
+              ${item.completed ? 'checked' : ''} 
+              onchange="app.toggleChecklistItem(${cleaning.id}, ${item.id}, this.checked)">
+            <span>${item.item}</span>
+          </label>
+        `).join('')}
+      </div>
+    `).join('');
+    
+    // Update button states
+    const startBtn = document.getElementById('startCleaningBtn');
+    const completeBtn = document.getElementById('completeCleaningBtn');
+    
+    if (startBtn && completeBtn) {
+      startBtn.disabled = cleaning.status !== 'scheduled';
+      completeBtn.disabled = cleaning.status === 'completed';
+    }
+  }
+  
+  toggleChecklistItem(cleaningId, itemId, completed) {
+    CleaningModule.updateChecklistItem(cleaningId, itemId, completed);
+    const cleaning = CleaningModule.getById(cleaningId);
+    if (cleaning) {
+      this.renderChecklist(cleaning);
+    }
+  }
+  
+  // ==================== MAINTENANCE ====================
+  
+  renderMaintenance() {
+    const categoryFilter = document.getElementById('maintenanceCategoryFilter')?.value || 'all';
+    const statusFilter = document.getElementById('maintenanceStatusFilter')?.value || 'all';
+    const priorityFilter = document.getElementById('maintenancePriorityFilter')?.value || 'all';
+    const search = document.getElementById('maintenanceSearch')?.value.toLowerCase() || '';
+    
+    let maintenances = MaintenanceModule.getAll();
+    
+    // Apply filters
+    if (categoryFilter !== 'all') {
+      maintenances = maintenances.filter(m => m.category === categoryFilter);
+    }
+    if (statusFilter !== 'all') {
+      maintenances = maintenances.filter(m => m.status === statusFilter);
+    }
+    if (priorityFilter !== 'all') {
+      maintenances = maintenances.filter(m => m.priority === priorityFilter);
+    }
+    if (search) {
+      maintenances = maintenances.filter(m => 
+        m.description?.toLowerCase().includes(search) ||
+        m.assignedTo?.toLowerCase().includes(search) ||
+        m.notes?.toLowerCase().includes(search)
+      );
+    }
+    
+    // Update stats
+    const stats = MaintenanceModule.getStats();
+    document.getElementById('maintenancePending').textContent = stats.pending;
+    document.getElementById('maintenanceInProgress').textContent = stats.inProgress;
+    document.getElementById('maintenanceUrgent').textContent = stats.urgent;
+    document.getElementById('maintenanceTotalCost').textContent = `€${stats.totalCost.toFixed(2)}`;
+    
+    // Render list
+    const container = document.getElementById('maintenanceList');
+    if (!container) return;
+    
+    if (maintenances.length === 0) {
+      container.innerHTML = '<p class="empty-state">Nessun intervento trovato</p>';
+      return;
+    }
+    
+    maintenances.sort((a, b) => {
+      const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
+      return priorityOrder[a.priority] - priorityOrder[b.priority];
+    });
+    
+    container.innerHTML = maintenances.map(m => this.renderMaintenanceCard(m)).join('');
+  }
+  
+  renderMaintenanceCard(maintenance) {
+    const statusLabels = { pending: 'Da Programmare', 'in-progress': 'In Corso', completed: 'Completato', cancelled: 'Annullato' };
+    const statusColors = { pending: '#3b82f6', 'in-progress': '#f59e0b', completed: '#10b981', cancelled: '#6b7280' };
+    const priorityColors = { low: '#6b7280', medium: '#3b82f6', high: '#f59e0b', urgent: '#ef4444' };
+    const priorityLabels = { low: 'Bassa', medium: 'Media', high: 'Alta', urgent: 'Urgente' };
+    
+    return `
+      <div class="item-card">
+        <div class="item-header">
+          <h3>${MaintenanceModule.categories[maintenance.category] || maintenance.category}</h3>
+          <div class="item-actions">
+            <button class="btn-icon" onclick="app.editMaintenance(${maintenance.id})" title="Modifica">✏️</button>
+            <button class="btn-icon" onclick="app.deleteMaintenance(${maintenance.id})" title="Elimina">🗑️</button>
+          </div>
+        </div>
+        <div class="item-body">
+          <p><strong>Descrizione:</strong> ${Utils.escapeHtml(maintenance.description)}</p>
+          <p><strong>📅 Richiesta:</strong> ${Utils.formatDate(new Date(maintenance.requestDate))}</p>
+          ${maintenance.scheduledDate ? `<p><strong>🗓️ Programmata:</strong> ${Utils.formatDate(new Date(maintenance.scheduledDate))}</p>` : ''}
+          ${maintenance.assignedTo ? `<p><strong>👤 Assegnato a:</strong> ${maintenance.assignedTo}</p>` : ''}
+          <p><strong>💰 Costo:</strong> €${(maintenance.finalCost || maintenance.estimatedCost || 0).toFixed(2)}</p>
+          ${maintenance.notes ? `<p><strong>Note:</strong> ${Utils.escapeHtml(maintenance.notes)}</p>` : ''}
+        </div>
+        <div class="item-footer">
+          <span class="badge" style="background: ${priorityColors[maintenance.priority]}; color: white;">
+            ${priorityLabels[maintenance.priority]}
+          </span>
+          <span class="badge" style="background: ${statusColors[maintenance.status]}; color: white;">
+            ${statusLabels[maintenance.status]}
+          </span>
+          ${maintenance.status === 'pending' ? 
+            `<button class="btn btn-sm btn-success" onclick="app.startMaintenance(${maintenance.id})">▶️ Inizia</button>` : ''}
+          ${maintenance.status === 'in-progress' ? 
+            `<button class="btn btn-sm btn-primary" onclick="app.completeMaintenance(${maintenance.id})">✅ Completa</button>` : ''}
+        </div>
+      </div>
+    `;
+  }
+  
+  setupMaintenanceListeners() {
+    const addBtn = document.getElementById('addMaintenanceBtn');
+    if (addBtn) {
+      addBtn.addEventListener('click', () => this.openMaintenanceModal());
+    }
+    
+    const form = document.getElementById('maintenanceForm');
+    if (form) {
+      form.addEventListener('submit', (e) => this.saveMaintenance(e));
+    }
+    
+    const categoryFilter = document.getElementById('maintenanceCategoryFilter');
+    if (categoryFilter) {
+      categoryFilter.addEventListener('change', () => this.renderMaintenance());
+    }
+    
+    const statusFilter = document.getElementById('maintenanceStatusFilter');
+    if (statusFilter) {
+      statusFilter.addEventListener('change', () => this.renderMaintenance());
+    }
+    
+    const priorityFilter = document.getElementById('maintenancePriorityFilter');
+    if (priorityFilter) {
+      priorityFilter.addEventListener('change', () => this.renderMaintenance());
+    }
+    
+    const search = document.getElementById('maintenanceSearch');
+    if (search) {
+      search.addEventListener('input', Utils.debounce(() => this.renderMaintenance(), 300));
+    }
+  }
+  
+  openMaintenanceModal(maintenanceId = null) {
+    this.currentEditingMaintenanceId = maintenanceId;
+    const modal = document.getElementById('maintenanceModal');
+    const title = document.getElementById('maintenanceModalTitle');
+    
+    if (maintenanceId) {
+      const maintenance = MaintenanceModule.getById(maintenanceId);
+      if (!maintenance) return;
+      
+      title.textContent = 'Modifica Intervento';
+      document.getElementById('maintenanceCategory').value = maintenance.category;
+      document.getElementById('maintenancePriority').value = maintenance.priority;
+      document.getElementById('maintenanceDescription').value = maintenance.description;
+      document.getElementById('maintenanceRequestDate').value = maintenance.requestDate;
+      document.getElementById('maintenanceScheduledDate').value = maintenance.scheduledDate || '';
+      document.getElementById('maintenanceAssignedTo').value = maintenance.assignedTo || '';
+      document.getElementById('maintenanceEstimatedCost').value = maintenance.estimatedCost || 0;
+      document.getElementById('maintenanceNotes').value = maintenance.notes || '';
+    } else {
+      title.textContent = 'Nuovo Intervento';
+      document.getElementById('maintenanceForm').reset();
+      document.getElementById('maintenanceRequestDate').value = new Date().toISOString().split('T')[0];
+      document.getElementById('maintenancePriority').value = 'medium';
+    }
+    
+    modal.classList.add('active');
+  }
+  
+  async saveMaintenance(e) {
+    e.preventDefault();
+    
+    const maintenanceData = {
+      category: document.getElementById('maintenanceCategory').value,
+      priority: document.getElementById('maintenancePriority').value,
+      description: document.getElementById('maintenanceDescription').value,
+      requestDate: document.getElementById('maintenanceRequestDate').value,
+      scheduledDate: document.getElementById('maintenanceScheduledDate').value || null,
+      assignedTo: document.getElementById('maintenanceAssignedTo').value || null,
+      estimatedCost: parseFloat(document.getElementById('maintenanceEstimatedCost').value) || 0,
+      notes: document.getElementById('maintenanceNotes').value
+    };
+    
+    try {
+      if (this.currentEditingMaintenanceId) {
+        await MaintenanceModule.update(this.currentEditingMaintenanceId, maintenanceData);
+        NotificationService.success('Intervento aggiornato!');
+      } else {
+        await MaintenanceModule.create(maintenanceData);
+        NotificationService.success('Intervento creato!');
+      }
+      
+      document.getElementById('maintenanceModal').classList.remove('active');
+      this.currentEditingMaintenanceId = null;
+      this.renderMaintenance();
+    } catch (error) {
+      ErrorHandler.handle(error, 'App.saveMaintenance', true);
+    }
+  }
+  
+  editMaintenance(id) {
+    this.openMaintenanceModal(id);
+  }
+  
+  deleteMaintenance(id) {
+    if (!confirm('Eliminare questo intervento?')) return;
+    
+    MaintenanceModule.delete(id);
+    NotificationService.success('Intervento eliminato');
+    this.renderMaintenance();
+  }
+  
+  async startMaintenance(id) {
+    try {
+      await MaintenanceModule.start(id);
+      NotificationService.success('Intervento iniziato!');
+      this.renderMaintenance();
+    } catch (error) {
+      ErrorHandler.handle(error, 'App.startMaintenance', true);
+    }
+  }
+  
+  completeMaintenance(id) {
+    const cost = prompt('Inserisci il costo finale (€):');
+    if (cost === null) return;
+    
+    const finalCost = parseFloat(cost) || 0;
+    
+    MaintenanceModule.complete(id, finalCost);
+    NotificationService.success('Intervento completato!');
+    this.renderMaintenance();
+  }
+  
+  // ==================== SETTINGS ====================
+  
+  renderSettings() {
+    // Load Telegram config
+    if (TelegramService.isConfigured()) {
+      document.getElementById('telegramBotToken').value = TelegramService.config.botToken || '';
+      document.getElementById('telegramCleaningChatId').value = TelegramService.config.chatIds.cleaning || '';
+      document.getElementById('telegramMaintenanceChatId').value = TelegramService.config.chatIds.maintenance || '';
+      document.getElementById('telegramAdminChatId').value = TelegramService.config.chatIds.admin || '';
+    }
+    
+    // Load Email config
+    if (EmailService.isConfigured()) {
+      document.getElementById('emailServiceId').value = EmailService.config.serviceId || '';
+      document.getElementById('emailTemplateId').value = EmailService.config.templateId || '';
+      document.getElementById('emailPublicKey').value = EmailService.config.publicKey || '';
+      document.getElementById('emailEnabled').checked = EmailService.config.enabled || false;
+    }
+    
+    // Load notification rules
+    const rules = JSON.parse(localStorage.getItem('notification_rules') || '{}');
+    document.getElementById('notifyCleaningCreated').checked = rules.cleaningCreated !== false;
+    document.getElementById('notifyCleaningReminder').checked = rules.cleaningReminder !== false;
+    document.getElementById('notifyMaintenanceCreated').checked = rules.maintenanceCreated !== false;
+    document.getElementById('notifyMaintenanceUrgent').checked = rules.maintenanceUrgent !== false;
+    document.getElementById('notifyBookingConfirmation').checked = rules.bookingConfirmation !== false;
+  }
+  
+  setupSettingsListeners() {
+    // Telegram save
+    const saveTelegramBtn = document.getElementById('saveTelegramBtn');
+    if (saveTelegramBtn) {
+      saveTelegramBtn.addEventListener('click', () => this.saveTelegramConfig());
+    }
+    
+    // Telegram test
+    const testTelegramBtn = document.getElementById('testTelegramBtn');
+    if (testTelegramBtn) {
+      testTelegramBtn.addEventListener('click', () => this.testTelegramConnection());
+    }
+    
+    // Email save
+    const saveEmailBtn = document.getElementById('saveEmailBtn');
+    if (saveEmailBtn) {
+      saveEmailBtn.addEventListener('click', () => this.saveEmailConfig());
+    }
+    
+    // Notification rules save
+    const saveRulesBtn = document.getElementById('saveNotificationRulesBtn');
+    if (saveRulesBtn) {
+      saveRulesBtn.addEventListener('click', () => this.saveNotificationRules());
+    }
+  }
+  
+  saveTelegramConfig() {
+    const botToken = document.getElementById('telegramBotToken').value.trim();
+    const chatIds = {
+      cleaning: document.getElementById('telegramCleaningChatId').value.trim(),
+      maintenance: document.getElementById('telegramMaintenanceChatId').value.trim(),
+      admin: document.getElementById('telegramAdminChatId').value.trim()
+    };
+    
+    if (!botToken) {
+      NotificationService.error('Inserisci il Bot Token');
+      return;
+    }
+    
+    TelegramService.saveConfig(botToken, chatIds);
+    NotificationService.success('Configurazione Telegram salvata!');
+  }
+  
+  async testTelegramConnection() {
+    const result = await TelegramService.testConnection();
+    
+    if (result.success) {
+      NotificationService.success(`✅ Connesso! Bot: @${result.botInfo.username}`);
+    } else {
+      NotificationService.error(`❌ Errore: ${result.error}`);
+    }
+  }
+  
+  saveEmailConfig() {
+    const serviceId = document.getElementById('emailServiceId').value.trim();
+    const templateId = document.getElementById('emailTemplateId').value.trim();
+    const publicKey = document.getElementById('emailPublicKey').value.trim();
+    const enabled = document.getElementById('emailEnabled').checked;
+    
+    if (enabled && (!serviceId || !templateId || !publicKey)) {
+      NotificationService.error('Compila tutti i campi Email');
+      return;
+    }
+    
+    EmailService.saveConfig(serviceId, templateId, publicKey, enabled);
+    NotificationService.success('Configurazione Email salvata!');
+  }
+  
+  saveNotificationRules() {
+    const rules = {
+      cleaningCreated: document.getElementById('notifyCleaningCreated').checked,
+      cleaningReminder: document.getElementById('notifyCleaningReminder').checked,
+      maintenanceCreated: document.getElementById('notifyMaintenanceCreated').checked,
+      maintenanceUrgent: document.getElementById('notifyMaintenanceUrgent').checked,
+      bookingConfirmation: document.getElementById('notifyBookingConfirmation').checked
+    };
+    
+    localStorage.setItem('notification_rules', JSON.stringify(rules));
+    NotificationService.success('Regole notifiche salvate!');
   }
   
   // ==================== CONTACTS LISTENERS ====================

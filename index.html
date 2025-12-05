@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="styles.css">
     <!-- Chart.js Library -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- EmailJS Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 </head>
 <body>
     <!-- Login Screen -->
@@ -64,6 +66,16 @@
                     <span class="nav-icon">📅</span>
                     <span>Prenotazioni</span>
                 </a>
+                <!-- Cleaning Section -->
+                <a href="#cleaning" class="nav-item" data-section="cleaning" id="cleaningNavItem">
+                    <span class="nav-icon">🧹</span>
+                    <span>Pulizie</span>
+                </a>
+                <!-- Maintenance Section -->
+                <a href="#maintenance" class="nav-item" data-section="maintenance" id="maintenanceNavItem">
+                    <span class="nav-icon">🔧</span>
+                    <span>Manutenzione</span>
+                </a>
                 <!-- Accounting Section -->
                 <a href="#accounting" class="nav-item" data-section="accounting" id="accountingNavItem">
                     <span class="nav-icon">💶</span>
@@ -88,6 +100,11 @@
                 <a href="#categoryAdmin" class="nav-item" data-section="categoryAdmin" id="categoryAdminNavItem" >
                     <span class="nav-icon">🏷️</span>
                     <span>Categorie</span>
+                </a>
+                <!-- Settings Section -->
+                <a href="#settings" class="nav-item" data-section="settings" id="settingsNavItem">
+                    <span class="nav-icon">⚙️</span>
+                    <span>Impostazioni</span>
                 </a>
             </nav>
             <div class="sidebar-footer">
@@ -288,6 +305,105 @@
                         <p class="empty-state">Nessuna prenotazione presente</p>
                     </div>
                 </div>
+            </div>
+
+            <!-- Cleaning Section -->
+            <div id="cleaningSection" class="content-section">
+                <!-- Cleaning Stats -->
+                <div class="cleaning-stats">
+                    <div class="stat-card-small">
+                        <span class="stat-label">Programmate</span>
+                        <span id="cleaningScheduled" class="stat-number">0</span>
+                    </div>
+                    <div class="stat-card-small">
+                        <span class="stat-label">In Corso</span>
+                        <span id="cleaningInProgress" class="stat-number">0</span>
+                    </div>
+                    <div class="stat-card-small">
+                        <span class="stat-label">Completate (30gg)</span>
+                        <span id="cleaningCompleted" class="stat-number">0</span>
+                    </div>
+                    <div class="stat-card-small">
+                        <span class="stat-label">Tempo Medio</span>
+                        <span id="cleaningAvgDuration" class="stat-number">0 min</span>
+                    </div>
+                </div>
+
+                <!-- Toolbar -->
+                <div class="section-toolbar">
+                    <input type="text" id="cleaningSearch" class="form-control" placeholder="Cerca pulizie...">
+                    <select id="cleaningStatusFilter" class="form-control">
+                        <option value="all">Tutti gli Stati</option>
+                        <option value="scheduled">Programmate</option>
+                        <option value="in-progress">In Corso</option>
+                        <option value="completed">Completate</option>
+                    </select>
+                    <input type="date" id="cleaningDateFilter" class="form-control">
+                    <button id="addCleaningBtn" class="btn btn-primary">+ Nuova Pulizia</button>
+                </div>
+
+                <!-- Cleanings List -->
+                <div id="cleaningList" class="items-list">
+                    <p class="empty-state">Nessuna pulizia programmata</p>
+                </div>
+            </div>
+
+            <!-- Maintenance Section -->
+            <div id="maintenanceSection" class="content-section">
+                <div class="section-header">
+                    <h1>🔧 Manutenzione</h1>
+                    <button class="btn btn-primary" id="addMaintenanceBtn">+ Aggiungi Intervento</button>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="maintenance-stats">
+                    <div class="stat-card-small">
+                        <h3>Da Programmare</h3>
+                        <p class="stat-value" id="maintenancePending">0</p>
+                    </div>
+                    <div class="stat-card-small">
+                        <h3>In Corso</h3>
+                        <p class="stat-value" id="maintenanceInProgress">0</p>
+                    </div>
+                    <div class="stat-card-small">
+                        <h3>🔴 Urgenti</h3>
+                        <p class="stat-value" id="maintenanceUrgent">0</p>
+                    </div>
+                    <div class="stat-card-small">
+                        <h3>Costo Totale (30gg)</h3>
+                        <p class="stat-value" id="maintenanceTotalCost">€0</p>
+                    </div>
+                </div>
+
+                <!-- Filters Toolbar -->
+                <div class="section-toolbar">
+                    <input type="text" id="maintenanceSearch" class="form-control" placeholder="Cerca intervento...">
+                    <select id="maintenanceCategoryFilter" class="form-control">
+                        <option value="all">Tutte le categorie</option>
+                        <option value="plumbing">🚰 Idraulica</option>
+                        <option value="electrical">⚡ Elettricità</option>
+                        <option value="heating">🔥 Riscaldamento</option>
+                        <option value="locksmith">🔑 Serrature</option>
+                        <option value="appliances">🔧 Elettrodomestici</option>
+                        <option value="other">🛠️ Altro</option>
+                    </select>
+                    <select id="maintenanceStatusFilter" class="form-control">
+                        <option value="all">Tutti gli stati</option>
+                        <option value="pending">Da programmare</option>
+                        <option value="in-progress">In corso</option>
+                        <option value="completed">Completati</option>
+                    </select>
+                    <select id="maintenancePriorityFilter" class="form-control">
+                        <option value="all">Tutte le priorità</option>
+                        <option value="urgent">🔴 Urgente</option>
+                        <option value="high">🟠 Alta</option>
+                        <option value="medium">🟡 Media</option>
+                        <option value="low">🔵 Bassa</option>
+                    </select>
+                </div>
+
+                <!-- Maintenance List -->
+                <div id="maintenanceList" class="items-list"></div>
             </div>
 
             <!-- Accounting Section -->
@@ -540,6 +656,116 @@
                 
                 <div id="categoryAdminList" class="category-admin-list">
                     <p class="empty-state">Nessuna categoria presente</p>
+                </div>
+            </div>
+
+            <!-- Settings Section -->
+            <div id="settingsSection" class="content-section">
+                <div class="section-header">
+                    <h1>⚙️ Impostazioni Notifiche</h1>
+                    <p class="section-description">Configura Telegram e Email per inviare notifiche automatiche</p>
+                </div>
+
+                <!-- Telegram Settings -->
+                <div class="settings-card">
+                    <h2>💬 Telegram (Staff Operativo)</h2>
+                    <p class="text-secondary">Notifiche istantanee per pulizie e manutenzione</p>
+                    
+                    <div class="form-group">
+                        <label>Bot Token</label>
+                        <input type="text" id="telegramBotToken" class="form-control" placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11">
+                        <small>Ottieni da @BotFather su Telegram</small>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Chat ID Pulizie</label>
+                            <input type="text" id="telegramCleaningChatId" class="form-control" placeholder="123456789">
+                            <small>Donna delle pulizie</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Chat ID Manutenzione</label>
+                            <input type="text" id="telegramMaintenanceChatId" class="form-control" placeholder="987654321">
+                            <small>Tecnico/Manutentore</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Chat ID Admin</label>
+                            <input type="text" id="telegramAdminChatId" class="form-control" placeholder="111222333">
+                            <small>Notifiche completamenti</small>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button class="btn btn-secondary" id="testTelegramBtn">🧪 Test Connessione</button>
+                        <button class="btn btn-primary" id="saveTelegramBtn">💾 Salva Telegram</button>
+                    </div>
+                </div>
+
+                <!-- Email Settings -->
+                <div class="settings-card">
+                    <h2>📧 Email (Clienti)</h2>
+                    <p class="text-secondary">Conferme booking e comunicazioni ufficiali via EmailJS</p>
+                    
+                    <div class="form-group">
+                        <label>Service ID</label>
+                        <input type="text" id="emailServiceId" class="form-control" placeholder="service_xxxxxxx">
+                        <small>Da dashboard EmailJS</small>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Template ID</label>
+                            <input type="text" id="emailTemplateId" class="form-control" placeholder="template_xxxxxxx">
+                        </div>
+                        <div class="form-group">
+                            <label>Public Key</label>
+                            <input type="text" id="emailPublicKey" class="form-control" placeholder="user_xxxxxxxxxxxxxxxxxxxx">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="emailEnabled"> Abilita Email
+                        </label>
+                    </div>
+
+                    <div class="form-actions">
+                        <button class="btn btn-secondary" id="testEmailBtn">🧪 Test Email</button>
+                        <button class="btn btn-primary" id="saveEmailBtn">💾 Salva Email</button>
+                    </div>
+                </div>
+
+                <!-- Notification Rules -->
+                <div class="settings-card">
+                    <h2>🔔 Regole Notifiche</h2>
+                    
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="notifyCleaningCreated" checked> Notifica nuova pulizia creata (Telegram)
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="notifyCleaningReminder" checked> Reminder pulizia 2 giorni prima (Telegram)
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="notifyMaintenanceCreated" checked> Notifica nuova manutenzione (Telegram)
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="notifyMaintenanceUrgent" checked> Alert urgenze immediate (Telegram)
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="notifyBookingConfirmation" checked> Email conferma booking (Email)
+                        </label>
+                    </div>
+
+                    <button class="btn btn-primary" id="saveNotificationRulesBtn">💾 Salva Regole</button>
                 </div>
             </div>
 
@@ -1098,6 +1324,178 @@
         </div>
     </div>
 
+    <!-- Cleaning Modal -->
+    <div id="cleaningModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="cleaningModalTitle">Nuova Pulizia</h2>
+                <button class="modal-close" onclick="document.getElementById('cleaningModal').classList.remove('active')">&times;</button>
+            </div>
+            <form id="cleaningForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="cleaningDate">Data Pulizia *</label>
+                        <input type="date" id="cleaningDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="cleaningTime">Orario</label>
+                        <input type="time" id="cleaningTime" value="14:00">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="cleaningGuestName">Cliente</label>
+                        <input type="text" id="cleaningGuestName" placeholder="Nome ospite (opzionale)">
+                    </div>
+                    <div class="form-group">
+                        <label for="cleaningBookingId">ID Prenotazione</label>
+                        <input type="number" id="cleaningBookingId" placeholder="ID prenotazione">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="cleaningAssignedTo">Assegnata a</label>
+                        <select id="cleaningAssignedTo">
+                            <option value="">Non assegnata</option>
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="cleaningPriority">Priorità</label>
+                        <select id="cleaningPriority">
+                            <option value="low">Bassa</option>
+                            <option value="normal" selected>Normale</option>
+                            <option value="high">Alta</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="cleaningDuration">Durata Stimata (min)</label>
+                        <input type="number" id="cleaningDuration" value="120" min="30" step="15">
+                    </div>
+                    <div class="form-group">
+                        <label for="cleaningCost">Costo (€)</label>
+                        <input type="number" id="cleaningCost" value="40" min="0" step="5">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="cleaningNotes">Note</label>
+                    <textarea id="cleaningNotes" rows="3" placeholder="Note aggiuntive..."></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('cleaningModal').classList.remove('active')">Annulla</button>
+                    <button type="submit" class="btn btn-primary">Salva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Cleaning Checklist Modal -->
+    <div id="checklistModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2 id="checklistModalTitle">Checklist Pulizia</h2>
+                <button class="modal-close" onclick="document.getElementById('checklistModal').classList.remove('active')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Progress Bar -->
+                <div class="checklist-progress">
+                    <div class="progress-bar">
+                        <div id="checklistProgressBar" class="progress-fill" style="width: 0%"></div>
+                    </div>
+                    <span id="checklistProgressText" class="progress-text">0% Completato</span>
+                </div>
+
+                <!-- Checklist Items by Category -->
+                <div id="checklistItems">
+                    <!-- Populated dynamically -->
+                </div>
+
+                <!-- Actions -->
+                <div class="checklist-actions" style="margin-top: 2rem; display: flex; gap: 1rem;">
+                    <button id="startCleaningBtn" class="btn btn-success">▶️ Inizia Pulizia</button>
+                    <button id="completeCleaningBtn" class="btn btn-primary">✅ Completa Pulizia</button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('checklistModal').classList.remove('active')">Chiudi</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Maintenance Modal -->
+    <div id="maintenanceModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="maintenanceModalTitle">Nuovo Intervento</h2>
+                <button class="modal-close" onclick="document.getElementById('maintenanceModal').classList.remove('active')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="maintenanceForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Categoria *</label>
+                            <select id="maintenanceCategory" class="form-control" required>
+                                <option value="">Seleziona...</option>
+                                <option value="plumbing">🚰 Idraulica</option>
+                                <option value="electrical">⚡ Elettricità</option>
+                                <option value="heating">🔥 Riscaldamento/Caldaia</option>
+                                <option value="locksmith">🔑 Serrature</option>
+                                <option value="appliances">🔧 Elettrodomestici</option>
+                                <option value="other">🛠️ Altro</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Priorità *</label>
+                            <select id="maintenancePriority" class="form-control" required>
+                                <option value="medium">🟡 Media</option>
+                                <option value="low">🔵 Bassa</option>
+                                <option value="high">🟠 Alta</option>
+                                <option value="urgent">🔴 Urgente</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Descrizione Problema *</label>
+                        <textarea id="maintenanceDescription" class="form-control" rows="3" required placeholder="Descrivi il problema..."></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Data Richiesta</label>
+                            <input type="date" id="maintenanceRequestDate" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Data Programmata</label>
+                            <input type="date" id="maintenanceScheduledDate" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Assegnato a</label>
+                            <input type="text" id="maintenanceAssignedTo" class="form-control" placeholder="Nome tecnico">
+                        </div>
+                        <div class="form-group">
+                            <label>Costo Stimato (€)</label>
+                            <input type="number" id="maintenanceEstimatedCost" class="form-control" step="0.01" min="0" value="0">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Note</label>
+                        <textarea id="maintenanceNotes" class="form-control" rows="2" placeholder="Note aggiuntive..."></textarea>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('maintenanceModal').classList.remove('active')">Annulla</button>
+                        <button type="submit" class="btn btn-primary">💾 Salva</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts: ORDINE CRITICO! -->
     <!-- 1. Configurazione -->
     <script src="js/config.js"></script>
@@ -1124,10 +1522,16 @@
     <script src="js/modules/notes.js"></script>
     <script src="js/modules/documents.js"></script>
     <script src="js/modules/bookings.js"></script>
+    <script src="js/modules/cleaning.js"></script>
+    <script src="js/modules/maintenance.js"></script>
     <script src="js/modules/accounting.js"></script>
     <script src="js/modules/analytics.js"></script>
     <script src="js/modules/backup.js"></script>
     <script src="js/modules/users-management.js"></script>
+    
+    <!-- 5b. Services -->
+    <script src="js/services/TelegramService.js"></script>
+    <script src="js/services/EmailService.js"></script>
     
     <!-- 6. Componenti -->
     <script src="js/components/calendar.js"></script>
@@ -1138,4 +1542,27 @@
     <!-- 8. App principale (ultimo!) -->
     <script src="js/app.js"></script>
 </body>
-</html>
+</html><!-- Aggiungi prima di </body> - Da integrare manualmente nella posizione corretta -->
+
+<!-- MANUTENZIONE HTML DA COPIARE DOPO cleaningSection -->
+<!--
+            <div id="maintenanceSection" class="content-section">
+                <div class="section-header">
+                    <h1>🔧 Manutenzione</h1>
+                    <button class="btn btn-primary" id="addMaintenanceBtn">+ Aggiungi Intervento</button>
+                </div>
+                <div class="maintenance-stats">
+                    <div class="stat-card-small"><h3>Da Programmare</h3><p class="stat-value" id="maintenancePending">0</p></div>
+                    <div class="stat-card-small"><h3>In Corso</h3><p class="stat-value" id="maintenanceInProgress">0</p></div>
+                    <div class="stat-card-small"><h3>🔴 Urgenti</h3><p class="stat-value" id="maintenanceUrgent">0</p></div>
+                    <div class="stat-card-small"><h3>Costo (30gg)</h3><p class="stat-value" id="maintenanceTotalCost">€0</p></div>
+                </div>
+                <div class="section-toolbar">
+                    <input type="text" id="maintenanceSearch" class="form-control" placeholder="Cerca...">
+                    <select id="maintenanceCategoryFilter" class="form-control"><option value="all">Tutte categorie</option><option value="plumbing">🚰 Idraulica</option><option value="electrical">⚡ Elettricità</option><option value="heating">🔥 Riscaldamento</option><option value="locksmith">🔑 Serrature</option><option value="appliances">🔧 Elettrodomestici</option><option value="other">🛠️ Altro</option></select>
+                    <select id="maintenanceStatusFilter" class="form-control"><option value="all">Tutti</option><option value="pending">Da programmare</option><option value="in-progress">In corso</option><option value="completed">Completati</option></select>
+                    <select id="maintenancePriorityFilter" class="form-control"><option value="all">Tutte</option><option value="urgent">🔴 Urgente</option><option value="high">🟠 Alta</option><option value="medium">🟡 Media</option><option value="low">🔵 Bassa</option></select>
+                </div>
+                <div id="maintenanceList" class="items-list"></div>
+            </div>
+-->
