@@ -109,8 +109,7 @@ const DocumentsModule = {
       return { success: true, document, message: 'Documento caricato' };
       
     } catch (error) {
-      console.error('Error uploading document:', error);
-      NotificationService.error('Errore durante il caricamento');
+      ErrorHandler.handle(error, 'DocumentsModule.uploadDocument', true);
       return { success: false, document: null, message: 'Errore upload' };
     }
   },

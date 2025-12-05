@@ -170,6 +170,40 @@ class DashboardApp {
       this.toggleTheme();
     });
     
+    // Backup button
+    document.getElementById('backupBtn').addEventListener('click', () => {
+      document.getElementById('backupModal').classList.add('active');
+    });
+    
+    // Mobile menu toggle
+    const menuToggle = document.getElementById('menuToggle');
+    const sidebar = document.querySelector('.sidebar');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+    
+    if (menuToggle && sidebar && sidebarOverlay) {
+      // Toggle sidebar
+      menuToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('mobile-open');
+        sidebarOverlay.classList.toggle('active');
+      });
+      
+      // Close sidebar when clicking overlay
+      sidebarOverlay.addEventListener('click', () => {
+        sidebar.classList.remove('mobile-open');
+        sidebarOverlay.classList.remove('active');
+      });
+      
+      // Close sidebar when navigating on mobile
+      document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', () => {
+          if (window.innerWidth <= 1024) {
+            sidebar.classList.remove('mobile-open');
+            sidebarOverlay.classList.remove('active');
+          }
+        });
+      });
+    }
+    
     // Navigation - usa Router invece di switchSection manuale
     document.querySelectorAll('.nav-item').forEach(item => {
       item.addEventListener('click', (e) => {
@@ -197,6 +231,9 @@ class DashboardApp {
     // Accounting
     this.setupAccountingListeners();
     
+    // Analytics
+    this.setupAnalyticsListeners();
+    
     // Activity Log
     this.setupActivityLogListeners();
     
@@ -205,6 +242,9 @@ class DashboardApp {
       this.setupUsersListeners();
       this.setupCategoryAdminListeners();
     }
+    
+    // Backup/Restore
+    this.setupBackupListeners();
 
     // Modal close handlers: ensure editing states reset when modal closed
     document.querySelectorAll('.modal-close').forEach(btn => {
@@ -301,6 +341,7 @@ class DashboardApp {
     this.renderNotes();
     this.renderDocuments();
     this.renderAccounting();
+    this.renderAnalytics();
     this.renderRecentActivity();
     this.renderActivityLog();
     
@@ -923,6 +964,43 @@ class DashboardApp {
     }
   }
   
+  // ==================== BACKUP & RESTORE ====================
+  
+  setupBackupListeners() {
+    // Download backup button
+    const downloadBtn = document.getElementById('downloadBackupBtn');
+    if (downloadBtn) {
+      downloadBtn.addEventListener('click', () => {
+        BackupModule.downloadBackup();
+      });
+    }
+    
+    // Select backup file button
+    const selectBtn = document.getElementById('selectBackupFileBtn');
+    const fileInput = document.getElementById('backupFileInput');
+    
+    if (selectBtn && fileInput) {
+      selectBtn.addEventListener('click', () => {
+        fileInput.click();
+      });
+      
+      fileInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const result = await BackupModule.handleFileUpload(file);
+          
+          // Reset input
+          fileInput.value = '';
+          
+          // Close modal if successful
+          if (result.success) {
+            document.getElementById('backupModal').classList.remove('active');
+          }
+        }
+      });
+    }
+  }
+  
   // ==================== ACCOUNTING ====================
   
   /**
@@ -1188,6 +1266,33 @@ class DashboardApp {
       addBtn.addEventListener('click', () => this.openTransactionModal());
     }
     
+    // Export CSV button
+    const exportCSVBtn = document.getElementById('exportAccountingCSV');
+    if (exportCSVBtn) {
+      exportCSVBtn.addEventListener('click', () => {
+        const monthFilter = document.getElementById('accountingMonthFilter').value;
+        const currentYear = new Date().getFullYear();
+        
+        if (monthFilter === 'all') {
+          AccountingModule.exportToCSV(currentYear);
+        } else if (monthFilter === 'current') {
+          const currentMonth = new Date().getMonth();
+          AccountingModule.exportToCSV(currentYear, currentMonth);
+        } else {
+          AccountingModule.exportToCSV(currentYear, parseInt(monthFilter));
+        }
+      });
+    }
+    
+    // Export Summary button
+    const exportSummaryBtn = document.getElementById('exportAccountingSummary');
+    if (exportSummaryBtn) {
+      exportSummaryBtn.addEventListener('click', () => {
+        const currentYear = new Date().getFullYear();
+        AccountingModule.exportSummary(currentYear);
+      });
+    }
+    
     // Transaction form submit
     const form = document.getElementById('transactionForm');
     if (form) {
@@ -1224,6 +1329,350 @@ class DashboardApp {
       search.addEventListener('input', 
         Utils.debounce(() => this.renderAccounting(), 300)
       );
+    }
+  }
+  
+  // ==================== ANALYTICS ====================
+  
+  /**
+   * Render analytics dashboard with charts
+   */
+  renderAnalytics() {
+    const months = parseInt(document.getElementById('analyticsPeriod')?.value) || 12;
+    
+    // Render KPIs
+    this.renderKPIs(months);
+    
+    // Render charts
+    this.renderRevenueTrendChart(months);
+    this.renderExpenseCategoriesChart(months);
+    this.renderOccupancyChart(months);
+    this.renderBookingChannelsChart(months);
+  }
+  
+  /**
+   * Render KPI cards
+   */
+  renderKPIs(months) {
+    try {
+      const kpis = AnalyticsModule.getKPIs(months);
+      
+      // Revenue
+      document.getElementById('kpiRevenue').textContent = kpis.revenue.formatted;
+      this.updateKPIChange('kpiRevenueChange', kpis.revenue.change);
+      
+      // Occupancy
+      document.getElementById('kpiOccupancy').textContent = kpis.occupancy.formatted;
+      this.updateKPIChange('kpiOccupancyChange', kpis.occupancy.change);
+      
+      // Bookings
+      document.getElementById('kpiBookings').textContent = kpis.bookings.formatted;
+      this.updateKPIChange('kpiBookingsChange', kpis.bookings.change);
+      
+      // Avg Revenue
+      document.getElementById('kpiAvgRevenue').textContent = kpis.avgRevenue.formatted;
+      this.updateKPIChange('kpiAvgRevenueChange', kpis.avgRevenue.change);
+    } catch (error) {
+      ErrorHandler.handle(error, 'App.renderKPIs');
+    }
+  }
+  
+  /**
+   * Update KPI change indicator
+   */
+  updateKPIChange(elementId, change) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+    
+    const absChange = Math.abs(change);
+    const sign = change >= 0 ? '+' : '-';
+    const icon = change >= 0 ? '📈' : '📉';
+    
+    element.textContent = `${icon} ${sign}${absChange.toFixed(1)}%`;
+    element.className = 'kpi-change';
+    if (change > 0) {
+      element.classList.add('positive');
+    } else if (change < 0) {
+      element.classList.add('negative');
+    }
+  }
+  
+  /**
+   * Render revenue trend chart
+   */
+  renderRevenueTrendChart(months) {
+    try {
+      const data = AnalyticsModule.getRevenueTrend(months);
+      const ctx = document.getElementById('revenueTrendChart');
+      if (!ctx) return;
+      
+      // Destroy existing chart
+      if (this.revenueTrendChart) {
+        this.revenueTrendChart.destroy();
+      }
+      
+      this.revenueTrendChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: data.labels,
+          datasets: [
+            {
+              label: 'Entrate',
+              data: data.income,
+              borderColor: '#10b981',
+              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+              tension: 0.4,
+              fill: true
+            },
+            {
+              label: 'Uscite',
+              data: data.expenses,
+              borderColor: '#ef4444',
+              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              tension: 0.4,
+              fill: true
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: true,
+              position: 'top'
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `${context.dataset.label}: €${context.parsed.y.toLocaleString('it-IT')}`;
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: function(value) {
+                  return '€' + value.toLocaleString('it-IT');
+                }
+              }
+            }
+          }
+        }
+      });
+    } catch (error) {
+      ErrorHandler.handle(error, 'App.renderRevenueTrendChart');
+    }
+  }
+  
+  /**
+   * Render expense categories chart
+   */
+  renderExpenseCategoriesChart(months) {
+    try {
+      const data = AnalyticsModule.getExpensesByCategory(months);
+      const ctx = document.getElementById('expenseCategoriesChart');
+      if (!ctx) return;
+      
+      // Destroy existing chart
+      if (this.expenseCategoriesChart) {
+        this.expenseCategoriesChart.destroy();
+      }
+      
+      this.expenseCategoriesChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: data.labels,
+          datasets: [{
+            data: data.data,
+            backgroundColor: data.colors,
+            borderWidth: 2,
+            borderColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: true,
+              position: 'right'
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                  const percentage = ((context.parsed / total) * 100).toFixed(1);
+                  return `${context.label}: €${context.parsed.toLocaleString('it-IT')} (${percentage}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    } catch (error) {
+      ErrorHandler.handle(error, 'App.renderExpenseCategoriesChart');
+    }
+  }
+  
+  /**
+   * Render occupancy rate chart
+   */
+  renderOccupancyChart(months) {
+    try {
+      const data = AnalyticsModule.getOccupancyRate(months);
+      const ctx = document.getElementById('occupancyChart');
+      if (!ctx) return;
+      
+      // Destroy existing chart
+      if (this.occupancyChart) {
+        this.occupancyChart.destroy();
+      }
+      
+      this.occupancyChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: data.labels,
+          datasets: [{
+            label: 'Tasso di Occupazione',
+            data: data.occupancyRate,
+            backgroundColor: '#3b82f6',
+            borderRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `Occupazione: ${context.parsed.y.toFixed(1)}%`;
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              ticks: {
+                callback: function(value) {
+                  return value + '%';
+                }
+              }
+            }
+          }
+        }
+      });
+    } catch (error) {
+      ErrorHandler.handle(error, 'App.renderOccupancyChart');
+    }
+  }
+  
+  /**
+   * Render booking channels chart
+   */
+  renderBookingChannelsChart(months) {
+    try {
+      const data = AnalyticsModule.getBookingsByChannel(months);
+      const ctx = document.getElementById('bookingChannelsChart');
+      if (!ctx) return;
+      
+      // Destroy existing chart
+      if (this.bookingChannelsChart) {
+        this.bookingChannelsChart.destroy();
+      }
+      
+      this.bookingChannelsChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: data.labels,
+          datasets: [{
+            data: data.data,
+            backgroundColor: data.colors,
+            borderWidth: 2,
+            borderColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: true,
+              position: 'bottom'
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                  const percentage = ((context.parsed / total) * 100).toFixed(1);
+                  return `${context.label}: ${context.parsed} (${percentage}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    } catch (error) {
+      ErrorHandler.handle(error, 'App.renderBookingChannelsChart');
+    }
+  }
+  
+  /**
+   * Setup analytics listeners
+   */
+  setupAnalyticsListeners() {
+    // Period selector
+    const periodSelect = document.getElementById('analyticsPeriod');
+    if (periodSelect) {
+      periodSelect.addEventListener('change', () => this.renderAnalytics());
+    }
+    
+    // Refresh button
+    const refreshBtn = document.getElementById('refreshAnalyticsBtn');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', () => this.renderAnalytics());
+    }
+    
+    // Export charts button
+    const exportBtn = document.getElementById('exportChartsBtn');
+    if (exportBtn) {
+      exportBtn.addEventListener('click', () => this.exportCharts());
+    }
+  }
+  
+  /**
+   * Export all charts as images
+   */
+  exportCharts() {
+    try {
+      const charts = [
+        { chart: this.revenueTrendChart, name: 'revenue_trend' },
+        { chart: this.expenseCategoriesChart, name: 'expense_categories' },
+        { chart: this.occupancyChart, name: 'occupancy_rate' },
+        { chart: this.bookingChannelsChart, name: 'booking_channels' }
+      ];
+      
+      charts.forEach(({ chart, name }) => {
+        if (chart) {
+          const url = chart.toBase64Image();
+          const link = document.createElement('a');
+          link.download = `${name}_${new Date().toISOString().split('T')[0]}.png`;
+          link.href = url;
+          link.click();
+        }
+      });
+      
+      NotificationService.success('Grafici esportati con successo!');
+    } catch (error) {
+      ErrorHandler.handle(error, 'App.exportCharts', true);
     }
   }
   
@@ -1741,8 +2190,7 @@ class DashboardApp {
       this.renderCategoryAdmin();
       this.populateContactFilter();
     } catch (error) {
-      console.error('Error adding category:', error);
-      this.notificationService.show('Errore nella creazione della categoria', 'error');
+      ErrorHandler.handle(error, 'App.addCategory', true);
     }
   }
   

@@ -215,5 +215,116 @@ const Utils = {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  },
+
+  /**
+   * Download file generico
+   * @param {string|Blob} content - Contenuto del file
+   * @param {string} filename - Nome file
+   * @param {string} mimeType - Tipo MIME
+   */
+  downloadFile(content, filename, mimeType = 'text/plain') {
+    const blob = content instanceof Blob ? content : new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
+
+  /**
+   * Converte array di oggetti in CSV
+   * @param {Array} data - Array di oggetti
+   * @param {Array} columns - Colonne da esportare [{key, label}]
+   * @returns {string} - Stringa CSV
+   */
+  convertToCSV(data, columns) {
+    if (!data || data.length === 0) return '';
+    
+    // Header
+    const header = columns.map(col => `"${col.label}"`).join(',');
+    
+    // Rows
+    const rows = data.map(item => {
+      return columns.map(col => {
+        let value = item[col.key];
+        
+        // Gestisci valori nulli/undefined
+        if (value === null || value === undefined) value = '';
+        
+        // Formatta date
+        if (value instanceof Date) {
+          value = this.formatDate(value);
+        } else if (typeof value === 'object') {
+          value = JSON.stringify(value);
+        }
+        
+        // Escape virgolette e wrap
+        value = String(value).replace(/"/g, '""');
+        return `"${value}"`;
+      }).join(',');
+    });
+    
+    return [header, ...rows].join('\n');
+  },
+
+  /**
+   * Leggi file come testo
+   * @param {File} file - File da leggere
+   * @returns {Promise<string>} - Contenuto del file
+   */
+  readFileAsText(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = (e) => reject(e);
+      reader.readAsText(file);
+    });
+  }
+};
+
+// ==================== ERROR HANDLER ====================
+const ErrorHandler = {
+  /**
+   * Gestisce errori in modo centralizzato
+   * @param {Error} error - Errore
+   * @param {string} context - Contesto dell'errore
+   * @param {boolean} showToUser - Mostra notifica all'utente
+   */
+  handle(error, context = 'Unknown', showToUser = true) {
+    // Log dettagliato in console
+    console.error(`[${context}]`, {
+      message: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Mostra notifica user-friendly
+    if (showToUser && typeof NotificationService !== 'undefined') {
+      NotificationService.error('Si è verificato un errore. Riprova.');
+    }
+    
+    // In futuro: invia a servizio di logging remoto
+    // this.logToServer(error, context);
+  },
+
+  /**
+   * Wrapper per funzioni async con error handling
+   * @param {Function} fn - Funzione async
+   * @param {string} context - Contesto
+   * @returns {Function} - Funzione wrappata
+   */
+  wrap(fn, context) {
+    return async (...args) => {
+      try {
+        return await fn(...args);
+      } catch (error) {
+        this.handle(error, context);
+        throw error;
+      }
+    };
   }
 };

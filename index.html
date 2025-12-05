@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Gestionale</title>
     <link rel="stylesheet" href="styles.css">
+    <!-- Chart.js Library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
     <!-- Login Screen -->
@@ -28,6 +30,9 @@
 
     <!-- Main Dashboard -->
     <div id="dashboard" class="dashboard-container" >
+        <!-- Sidebar Overlay for Mobile -->
+        <div id="sidebarOverlay" class="sidebar-overlay"></div>
+        
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
@@ -64,6 +69,11 @@
                     <span class="nav-icon">💶</span>
                     <span>Contabilità</span>
                 </a>
+                <!-- Analytics Section -->
+                <a href="#analytics" class="nav-item" data-section="analytics" id="analyticsNavItem">
+                    <span class="nav-icon">📊</span>
+                    <span>Analytics</span>
+                </a>
                 <!-- Activity Log Section -->
                 <a href="#activityLog" class="nav-item" data-section="activityLog" id="activityLogNavItem" >
                     <span class="nav-icon">📋</span>
@@ -88,8 +98,12 @@
         <!-- Main Content -->
         <main class="main-content">
             <header class="content-header">
-                <h1 id="sectionTitle">Overview</h1>
+                <div class="header-left">
+                    <button id="menuToggle" class="btn-icon menu-toggle" title="Menu">☰</button>
+                    <h1 id="sectionTitle">Overview</h1>
+                </div>
                 <div class="header-actions">
+                    <button id="backupBtn" class="btn btn-secondary" title="Backup & Ripristino">💾</button>
                     <button id="themeToggle" class="btn btn-secondary">🌓</button>
                 </div>
             </header>
@@ -356,12 +370,104 @@
                         <option value="10">Novembre</option>
                         <option value="11">Dicembre</option>
                     </select>
+                    <button id="exportAccountingCSV" class="btn btn-secondary" title="Esporta CSV">📊 CSV</button>
+                    <button id="exportAccountingSummary" class="btn btn-secondary" title="Riepilogo Anno">📄 Riepilogo</button>
                     <button id="addTransactionBtn" class="btn btn-primary">+ Nuova Transazione</button>
                 </div>
 
                 <!-- Transactions List -->
                 <div id="accountingList" class="items-list">
                     <p class="empty-state">Nessuna transazione registrata</p>
+                </div>
+            </div>
+
+            <!-- Analytics Section -->
+            <div id="analyticsSection" class="content-section">
+                <!-- Period Selector -->
+                <div class="analytics-toolbar">
+                    <select id="analyticsPeriod" class="form-control">
+                        <option value="6">Ultimi 6 Mesi</option>
+                        <option value="12" selected>Ultimi 12 Mesi</option>
+                        <option value="24">Ultimi 24 Mesi</option>
+                        <option value="all">Tutto il Periodo</option>
+                    </select>
+                    <button id="exportChartsBtn" class="btn btn-secondary">📷 Esporta Grafici</button>
+                    <button id="refreshAnalyticsBtn" class="btn btn-primary">🔄 Aggiorna</button>
+                </div>
+
+                <!-- KPI Cards -->
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-icon">💰</div>
+                        <div class="kpi-content">
+                            <p class="kpi-label">Revenue Totale</p>
+                            <h3 id="kpiRevenue" class="kpi-value">€0</h3>
+                            <span id="kpiRevenueChange" class="kpi-change">-</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon">📈</div>
+                        <div class="kpi-content">
+                            <p class="kpi-label">Tasso Occupazione</p>
+                            <h3 id="kpiOccupancy" class="kpi-value">0%</h3>
+                            <span id="kpiOccupancyChange" class="kpi-change">-</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon">📅</div>
+                        <div class="kpi-content">
+                            <p class="kpi-label">Prenotazioni</p>
+                            <h3 id="kpiBookings" class="kpi-value">0</h3>
+                            <span id="kpiBookingsChange" class="kpi-change">-</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon">💵</div>
+                        <div class="kpi-content">
+                            <p class="kpi-label">Revenue Media</p>
+                            <h3 id="kpiAvgRevenue" class="kpi-value">€0</h3>
+                            <span id="kpiAvgRevenueChange" class="kpi-change">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Grid -->
+                <div class="charts-grid">
+                    <!-- Revenue Trend Chart -->
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3>📈 Trend Entrate/Uscite</h3>
+                            <p>Andamento mensile revenue e spese</p>
+                        </div>
+                        <canvas id="revenueTrendChart"></canvas>
+                    </div>
+
+                    <!-- Expense Categories Chart -->
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3>🥧 Spese per Categoria</h3>
+                            <p>Distribuzione delle spese</p>
+                        </div>
+                        <canvas id="expenseCategoriesChart"></canvas>
+                    </div>
+
+                    <!-- Occupancy Rate Chart -->
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3>📊 Tasso di Occupazione</h3>
+                            <p>Giorni occupati vs disponibili</p>
+                        </div>
+                        <canvas id="occupancyChart"></canvas>
+                    </div>
+
+                    <!-- Booking Channels Chart -->
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3>🌐 Canali di Prenotazione</h3>
+                            <p>Distribuzione per canale</p>
+                        </div>
+                        <canvas id="bookingChannelsChart"></canvas>
+                    </div>
                 </div>
             </div>
 
@@ -960,6 +1066,38 @@
         </div>
     </div>
 
+    <!-- Backup/Restore Modal -->
+    <div id="backupModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>💾 Backup & Ripristino</h2>
+                <button class="modal-close" onclick="document.getElementById('backupModal').classList.remove('active')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="backup-section">
+                    <h3>Crea Backup</h3>
+                    <p>Scarica un backup completo di tutti i dati (contatti, prenotazioni, contabilità, ecc.)</p>
+                    <button id="downloadBackupBtn" class="btn btn-primary" style="width: 100%;">
+                        📥 Scarica Backup
+                    </button>
+                </div>
+                
+                <div class="backup-divider" style="margin: 2rem 0; border-top: 1px solid var(--border-color);"></div>
+                
+                <div class="backup-section">
+                    <h3>Ripristina Backup</h3>
+                    <p class="text-danger" style="margin-bottom: 1rem;">
+                        ⚠️ ATTENZIONE: Ripristinare un backup sovrascriverà TUTTI i dati attuali!
+                    </p>
+                    <input type="file" id="backupFileInput" accept=".json" style="display: none;">
+                    <button id="selectBackupFileBtn" class="btn btn-secondary" style="width: 100%;">
+                        📤 Seleziona File Backup
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts: ORDINE CRITICO! -->
     <!-- 1. Configurazione -->
     <script src="js/config.js"></script>
@@ -987,6 +1125,8 @@
     <script src="js/modules/documents.js"></script>
     <script src="js/modules/bookings.js"></script>
     <script src="js/modules/accounting.js"></script>
+    <script src="js/modules/analytics.js"></script>
+    <script src="js/modules/backup.js"></script>
     <script src="js/modules/users-management.js"></script>
     
     <!-- 6. Componenti -->

@@ -392,5 +392,106 @@ const AccountingModule = {
       other: 'Altro'
     };
     return labels[method] || method;
+  },
+
+  /**
+   * Esporta transazioni in formato CSV per commercialista
+   * @param {number} year - Anno (opzionale)
+   * @param {number} month - Mese 0-11 (opzionale)
+   * @returns {void}
+   */
+  exportToCSV(year = null, month = null) {
+    try {
+      let transactions = this.getAll();
+      
+      // Filtra per periodo se specificato
+      if (year !== null && month !== null) {
+        transactions = this.getByMonth(year, month);
+      } else if (year !== null) {
+        transactions = transactions.filter(t => new Date(t.date).getFullYear() === year);
+      }
+      
+      // Ordina per data
+      transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
+      
+      // Definisci colonne per export
+      const columns = [
+        { key: 'date', label: 'Data' },
+        { key: 'type', label: 'Tipo' },
+        { key: 'category', label: 'Categoria' },
+        { key: 'description', label: 'Descrizione' },
+        { key: 'amount', label: 'Importo (€)' },
+        { key: 'paymentMethod', label: 'Metodo Pagamento' },
+        { key: 'receiptNumber', label: 'N° Ricevuta' },
+        { key: 'notes', label: 'Note' },
+        { key: 'createdByUsername', label: 'Creato da' }
+      ];
+      
+      // Prepara dati con formattazione
+      const dataToExport = transactions.map(t => ({
+        date: Utils.formatDate(new Date(t.date)),
+        type: t.type === 'income' ? 'Entrata' : 'Uscita',
+        category: this.formatCategory(t.category),
+        description: t.description,
+        amount: t.type === 'income' ? t.amount.toFixed(2) : `-${t.amount.toFixed(2)}`,
+        paymentMethod: this.formatPaymentMethod(t.paymentMethod),
+        receiptNumber: t.receiptNumber || '',
+        notes: t.notes || '',
+        createdByUsername: t.createdByUsername || ''
+      }));
+      
+      // Genera CSV
+      const csv = Utils.convertToCSV(dataToExport, columns);
+      
+      // Nome file con periodo
+      const periodStr = month !== null 
+        ? `${year}-${String(month + 1).padStart(2, '0')}`
+        : year !== null ? `${year}` : 'completo';
+      const filename = `contabilita_${periodStr}_${Date.now()}.csv`;
+      
+      // Download
+      Utils.downloadFile(csv, filename, 'text/csv;charset=utf-8;');
+      
+      NotificationService.success('Export CSV completato!');
+    } catch (error) {
+      ErrorHandler.handle(error, 'AccountingModule.exportToCSV');
+    }
+  },
+
+  /**
+   * Esporta statistiche riepilogative
+   * @param {number} year - Anno
+   * @returns {void}
+   */
+  exportSummary(year) {
+    try {
+      const stats = this.getStats(year);
+      const transactions = this.getAll().filter(t => 
+        new Date(t.date).getFullYear() === year
+      );
+      
+      let summary = `RIEPILOGO CONTABILE ${year}\n`;
+      summary += `Generato il: ${Utils.formatDate(new Date(), true)}\n\n`;
+      summary += `TOTALI:\n`;
+      summary += `Entrate: €${stats.totalIncome.toFixed(2)}\n`;
+      summary += `Uscite: €${stats.totalExpenses.toFixed(2)}\n`;
+      summary += `Saldo: €${stats.balance.toFixed(2)}\n`;
+      summary += `Transazioni: ${stats.transactionCount}\n\n`;
+      
+      summary += `ENTRATE PER CATEGORIA:\n`;
+      Object.entries(stats.incomeByCategory).forEach(([cat, amount]) => {
+        summary += `${this.formatCategory(cat)}: €${amount.toFixed(2)}\n`;
+      });
+      
+      summary += `\nUSCITE PER CATEGORIA:\n`;
+      Object.entries(stats.expensesByCategory).forEach(([cat, amount]) => {
+        summary += `${this.formatCategory(cat)}: €${amount.toFixed(2)}\n`;
+      });
+      
+      Utils.downloadFile(summary, `riepilogo_${year}.txt`, 'text/plain;charset=utf-8;');
+      NotificationService.success('Riepilogo generato!');
+    } catch (error) {
+      ErrorHandler.handle(error, 'AccountingModule.exportSummary');
+    }
   }
 };
