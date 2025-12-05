@@ -52,11 +52,41 @@ const ContactsModule = {
       if (!contact.emails) contact.emails = [];
       if (!contact.phones) contact.phones = [];
 
+      // MIGRAZIONE: Split name in firstName e lastName
+      if (contact.name && !contact.firstName && !contact.lastName) {
+        const nameParts = contact.name.trim().split(/\s+/);
+        if (nameParts.length === 1) {
+          contact.firstName = nameParts[0];
+          contact.lastName = '';
+        } else {
+          contact.firstName = nameParts[0];
+          contact.lastName = nameParts.slice(1).join(' ');
+        }
+        migrated = true;
+      }
+
+      // Assicurati che firstName e lastName esistano
+      if (!contact.firstName) contact.firstName = contact.name || '';
+      if (!contact.lastName) contact.lastName = '';
+
+      // MIGRAZIONE: Aggiungi struttura address se mancante
+      if (!contact.address) {
+        contact.address = {
+          street: '',
+          city: '',
+          zip: '',
+          province: '',
+          country: ''
+        };
+        migrated = true;
+      }
+
       if (migrated) migratedCount++;
     });
 
     if (migratedCount > 0) {
       StorageManager.save(CONFIG.STORAGE_KEYS.CONTACTS, contacts);
+      console.log(`[ContactsModule] Migrati ${migratedCount} contatti alla nuova struttura`);
     }
 
     return { success: true, migratedCount };
@@ -142,8 +172,8 @@ const ContactsModule = {
       return { success: false, contact: null, message: 'Non autenticato' };
     }
 
-    // Validazione nome
-    if (!contactData.name || contactData.name.trim() === '') {
+    // Validazione firstName
+    if (!contactData.firstName || contactData.firstName.trim() === '') {
       NotificationService.error('Nome richiesto');
       return { success: false, contact: null, message: 'Nome richiesto' };
     }
@@ -175,7 +205,9 @@ const ContactsModule = {
     // Crea contatto con nuovo schema
     const contact = {
       id: Utils.generateId(),
-      name: contactData.name.trim(),
+      name: `${contactData.firstName.trim()} ${contactData.lastName?.trim() || ''}`.trim(), // Legacy compatibility
+      firstName: contactData.firstName.trim(),
+      lastName: contactData.lastName?.trim() || '',
       emails: contactData.emails.map(e => ({
         value: e.value.trim(),
         label: e.label.trim()
@@ -184,6 +216,13 @@ const ContactsModule = {
         value: p.value.trim(),
         label: p.label.trim()
       })),
+      address: {
+        street: contactData.address?.street?.trim() || '',
+        city: contactData.address?.city?.trim() || '',
+        zip: contactData.address?.zip?.trim() || '',
+        province: contactData.address?.province?.trim() || '',
+        country: contactData.address?.country?.trim() || ''
+      },
       company: contactData.company?.trim() || '',
       category: contactData.category || CONFIG.CONTACT_CATEGORIES.CLIENTE,
       notes: contactData.notes?.trim() || '',
@@ -236,9 +275,11 @@ const ContactsModule = {
       return { success: false, contact: null, message: 'Non autorizzato' };
     }
 
-    // Validazione nome
-    if (updates.name !== undefined && updates.name.trim() === '') {
+    // Validazione firstName
+    if (updates.firstName !== undefined && updates.firstName.trim() === '') {
       NotificationService.error('Nome richiesto');
+      return { success: false, contact: null, message: 'Nome richiesto' };
+    }
       return { success: false, contact: null, message: 'Nome richiesto' };
     }
 
@@ -275,9 +316,15 @@ const ContactsModule = {
     // Aggiorna
     const currentUser = AuthManager.getCurrentUser();
 
+    // Ricostruisci name se firstName o lastName cambiano
+    const updatedFirstName = updates.firstName !== undefined ? updates.firstName : contact.firstName;
+    const updatedLastName = updates.lastName !== undefined ? updates.lastName : contact.lastName;
+    const updatedName = `${updatedFirstName} ${updatedLastName}`.trim();
+
     contacts[index] = {
       ...contact,
       ...updates,
+      name: updatedName, // Mantieni legacy field aggiornato
       updatedAt: new Date().toISOString(),
       updatedBy: currentUser.id,
       updatedByUsername: currentUser.username

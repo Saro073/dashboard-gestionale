@@ -265,6 +265,22 @@ class DashboardApp {
   renderAll() {
     this.updateStats();
     this.populateContactFilter();
+    
+    // Initialize contacts view preference
+    const viewType = localStorage.getItem('contacts_view_preference') || 'grid';
+    const container = document.getElementById('contactsList');
+    if (viewType === 'list') {
+      container.classList.add('list-view');
+      container.classList.remove('items-grid');
+      document.getElementById('contactViewList').classList.add('active');
+      document.getElementById('contactViewGrid').classList.remove('active');
+    } else {
+      container.classList.add('items-grid');
+      container.classList.remove('list-view');
+      document.getElementById('contactViewGrid').classList.add('active');
+      document.getElementById('contactViewList').classList.remove('active');
+    }
+    
     this.renderContacts();
     this.renderTasks();
     this.renderNotes();
@@ -333,26 +349,105 @@ class DashboardApp {
   }
 
   /**
+   * Switch between grid and list view for contacts
+   */
+  switchContactsView(viewType) {
+    const gridBtn = document.getElementById('contactViewGrid');
+    const listBtn = document.getElementById('contactViewList');
+    const container = document.getElementById('contactsList');
+    
+    if (viewType === 'grid') {
+      gridBtn.classList.add('active');
+      listBtn.classList.remove('active');
+      container.classList.remove('list-view');
+      container.classList.add('items-grid');
+    } else {
+      listBtn.classList.add('active');
+      gridBtn.classList.remove('active');
+      container.classList.remove('items-grid');
+      container.classList.add('list-view');
+    }
+    
+    // Save preference
+    localStorage.setItem('contacts_view_preference', viewType);
+    this.renderContacts();
+  }
+
+  /**
    * Render contatti
    */
   renderContacts() {
     const container = document.getElementById('contactsList');
     const filter = document.getElementById('contactFilter').value;
     const search = document.getElementById('contactSearch').value;
+    const sortValue = document.getElementById('contactSort').value;
+    const viewType = localStorage.getItem('contacts_view_preference') || 'grid';
     
     let filtered = ContactsModule.filterByCategory(filter);
     if (search) {
       filtered = ContactsModule.search(search);
     }
     
+    // Apply sorting
+    const [sortField, sortDir] = sortValue.split('-');
+    filtered.sort((a, b) => {
+      let aVal, bVal;
+      
+      switch(sortField) {
+        case 'firstName':
+          aVal = (a.firstName || '').toLowerCase();
+          bVal = (b.firstName || '').toLowerCase();
+          break;
+        case 'lastName':
+          aVal = (a.lastName || '').toLowerCase();
+          bVal = (b.lastName || '').toLowerCase();
+          break;
+        case 'city':
+          aVal = (a.address?.city || '').toLowerCase();
+          bVal = (b.address?.city || '').toLowerCase();
+          break;
+        case 'company':
+          aVal = (a.company || '').toLowerCase();
+          bVal = (b.company || '').toLowerCase();
+          break;
+        case 'date':
+          aVal = new Date(a.createdAt || 0);
+          bVal = new Date(b.createdAt || 0);
+          break;
+        default:
+          aVal = (a.name || '').toLowerCase();
+          bVal = (b.name || '').toLowerCase();
+      }
+      
+      if (sortField === 'date') {
+        return sortDir === 'asc' ? aVal - bVal : bVal - aVal;
+      } else {
+        if (aVal < bVal) return sortDir === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortDir === 'asc' ? 1 : -1;
+        return 0;
+      }
+    });
+    
     if (filtered.length === 0) {
       container.innerHTML = '<p class="empty-state">Nessun contatto trovato</p>';
       return;
     }
     
-    container.innerHTML = filtered.map(contact => `
+    // Render based on view type
+    if (viewType === 'list') {
+      container.innerHTML = this.renderContactsListView(filtered);
+    } else {
+      container.innerHTML = this.renderContactsGridView(filtered);
+    }
+  }
+  
+  /**
+   * Render grid view for contacts
+   */
+  renderContactsGridView(contacts) {
+    return contacts.map(contact => `
       <div class="item-card">
-        <h3>${Utils.escapeHtml(contact.name)}</h3>
+        <h3>${Utils.escapeHtml(contact.firstName)} ${Utils.escapeHtml(contact.lastName || '')}</h3>
 
         ${contact.emails && contact.emails.length > 0
           ? contact.emails.map(e => `<p>📧 ${Utils.escapeHtml(e.value)} <span class="field-label">(${Utils.escapeHtml(e.label)})</span></p>`).join('')
@@ -364,6 +459,7 @@ class DashboardApp {
           : ''
         }
 
+        ${contact.address?.city ? `<p>📍 ${Utils.escapeHtml(contact.address.city)}</p>` : ''}
         ${contact.company ? `<p>🏢 ${Utils.escapeHtml(contact.company)}</p>` : ''}
         ${contact.notes ? `<p class="contact-notes">📝 ${Utils.escapeHtml(contact.notes)}</p>` : ''}
         <div class="item-meta">
@@ -378,6 +474,45 @@ class DashboardApp {
         </div>
       </div>
     `).join('');
+  }
+  
+  /**
+   * Render list view for contacts
+   */
+  renderContactsListView(contacts) {
+    return `
+      <table class="contacts-table">
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Cognome</th>
+            <th>Email</th>
+            <th>Telefono</th>
+            <th>Città</th>
+            <th>Categoria</th>
+            <th>Azioni</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${contacts.map(contact => `
+            <tr>
+              <td>${Utils.escapeHtml(contact.firstName || '')}</td>
+              <td>${Utils.escapeHtml(contact.lastName || '')}</td>
+              <td>${contact.emails && contact.emails[0] ? Utils.escapeHtml(contact.emails[0].value) : '-'}</td>
+              <td>${contact.phones && contact.phones[0] ? Utils.escapeHtml(contact.phones[0].value) : '-'}</td>
+              <td>${contact.address?.city ? Utils.escapeHtml(contact.address.city) : '-'}</td>
+              <td><span class="item-badge badge-${contact.category}">${contact.category}</span></td>
+              <td class="table-actions">
+                ${PermissionsManager.canEditContact(contact) ? 
+                  `<button class="btn btn-sm btn-secondary" onclick="app.editContact(${contact.id})" title="Modifica">✏️</button>` : ''}
+                ${PermissionsManager.canDeleteContact(contact) ?
+                  `<button class="btn btn-sm btn-danger" onclick="app.deleteContact(${contact.id})" title="Elimina">🗑️</button>` : ''}
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
   }
   
   /**
@@ -684,9 +819,22 @@ class DashboardApp {
       this.renderContacts();
     });
     
+    document.getElementById('contactSort').addEventListener('change', () => {
+      this.renderContacts();
+    });
+    
     document.getElementById('contactSearch').addEventListener('input', 
       Utils.debounce(() => this.renderContacts(), 300)
     );
+    
+    // View toggle listeners
+    document.getElementById('contactViewGrid').addEventListener('click', () => {
+      this.switchContactsView('grid');
+    });
+    
+    document.getElementById('contactViewList').addEventListener('click', () => {
+      this.switchContactsView('list');
+    });
     
     document.getElementById('contactForm').addEventListener('submit', (e) => {
       e.preventDefault();
@@ -705,6 +853,12 @@ class DashboardApp {
     phonesContainer.innerHTML = '';
     this.addEmailField();
     this.addPhoneField();
+    // Reset address fields
+    document.getElementById('contactAddressStreet').value = '';
+    document.getElementById('contactAddressCity').value = '';
+    document.getElementById('contactAddressZip').value = '';
+    document.getElementById('contactAddressProvince').value = '';
+    document.getElementById('contactAddressCountry').value = '';
     this.populateCategoryDatalist();
     document.getElementById('contactModal').classList.add('active');
     EventBus.emit(EVENTS.MODAL_OPENED, { modal: 'contact' });
@@ -719,10 +873,20 @@ class DashboardApp {
     document.getElementById('contactModalTitle').textContent = 'Modifica Contatto';
     document.getElementById('contactForm').reset();
 
-    document.getElementById('contactName').value = contact.name;
+    document.getElementById('contactFirstName').value = contact.firstName || contact.name || '';
+    document.getElementById('contactLastName').value = contact.lastName || '';
     document.getElementById('contactCompany').value = contact.company || '';
     document.getElementById('contactCategory').value = contact.category || 'cliente';
     document.getElementById('contactNotes').value = contact.notes || '';
+    
+    // Popola indirizzo
+    if (contact.address) {
+      document.getElementById('contactAddressStreet').value = contact.address.street || '';
+      document.getElementById('contactAddressCity').value = contact.address.city || '';
+      document.getElementById('contactAddressZip').value = contact.address.zip || '';
+      document.getElementById('contactAddressProvince').value = contact.address.province || '';
+      document.getElementById('contactAddressCountry').value = contact.address.country || '';
+    }
 
     const emailsContainer = document.getElementById('emailsContainer');
     const phonesContainer = document.getElementById('phonesContainer');
@@ -766,7 +930,8 @@ class DashboardApp {
   }
   
   saveContact() {
-    const name = document.getElementById('contactName').value;
+    const firstName = document.getElementById('contactFirstName').value;
+    const lastName = document.getElementById('contactLastName').value;
     const company = document.getElementById('contactCompany').value;
     const category = document.getElementById('contactCategory').value.trim();
     const notes = document.getElementById('contactNotes').value;
@@ -786,7 +951,15 @@ class DashboardApp {
       label: row.querySelector('.phone-label').value.trim()
     })).filter(p => p.value || p.label);
 
-    const payload = { name, emails, phones, company, category, notes };
+    const address = {
+      street: document.getElementById('contactAddressStreet').value.trim(),
+      city: document.getElementById('contactAddressCity').value.trim(),
+      zip: document.getElementById('contactAddressZip').value.trim(),
+      province: document.getElementById('contactAddressProvince').value.trim(),
+      country: document.getElementById('contactAddressCountry').value.trim()
+    };
+
+    const payload = { firstName, lastName, emails, phones, address, company, category, notes };
     let result;
     if (this.currentEditingContactId) {
       result = ContactsModule.update(this.currentEditingContactId, payload);

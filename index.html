@@ -152,7 +152,26 @@
                         <option value="all">Tutti</option>
                         <!-- Popolato dinamicamente da CategoryManager -->
                     </select>
+                    <select id="contactSort" class="form-control">
+                        <option value="firstName-asc">Nome (A → Z)</option>
+                        <option value="firstName-desc">Nome (Z → A)</option>
+                        <option value="lastName-asc">Cognome (A → Z)</option>
+                        <option value="lastName-desc">Cognome (Z → A)</option>
+                        <option value="city-asc">Città (A → Z)</option>
+                        <option value="company-asc">Azienda (A → Z)</option>
+                        <option value="date-desc">Più recenti</option>
+                        <option value="date-asc">Meno recenti</option>
+                    </select>
+                    <div class="view-toggle-group">
+                        <button id="contactViewGrid" class="view-toggle active" title="Vista griglia">
+                            <span>⊞</span>
+                        </button>
+                        <button id="contactViewList" class="view-toggle" title="Vista lista">
+                            <span>☰</span>
+                        </button>
+                    </div>
                     <button id="addContactBtn" class="btn btn-primary">+ Aggiungi Contatto</button>
+                </div>
                 </div>
                 <div id="contactsList" class="items-grid">
                     <p class="empty-state">Nessun contatto presente</p>
@@ -310,9 +329,15 @@
                     <div class="form-grid-2col">
                         <!-- COLONNA SINISTRA: Dati Principali -->
                         <div class="form-col-left">
-                            <div class="form-group">
-                                <label for="contactName">Nome *</label>
-                                <input type="text" id="contactName" required>
+                            <div class="form-row">
+                                <div class="form-group" style="flex: 1;">
+                                    <label for="contactFirstName">Nome *</label>
+                                    <input type="text" id="contactFirstName" required>
+                                </div>
+                                <div class="form-group" style="flex: 1;">
+                                    <label for="contactLastName">Cognome</label>
+                                    <input type="text" id="contactLastName">
+                                </div>
                             </div>
                             
                             <!-- EMAILS MULTIPLI -->
@@ -348,6 +373,51 @@
                             <div class="form-group">
                                 <label for="contactCompany">Azienda</label>
                                 <input type="text" id="contactCompany">
+                            </div>
+                            <div class="form-group">
+                                <label for="contactCategory">Categoria</label>
+                                <input 
+                                    type="text" 
+                                    id="contactCategory" 
+                                    list="contactCategoryList" 
+                                    placeholder="Seleziona o digita una categoria..."
+                                    autocomplete="off"
+                                >
+                                <datalist id="contactCategoryList">
+                                    <!-- Popolato dinamicamente da CategoryManager -->
+                                </datalist>
+                                <small class="form-help-text">Digita per creare una nuova categoria</small>
+                            </div>
+                            
+                            <!-- SEZIONE INDIRIZZO -->
+                            <div class="form-group-section">
+                                <label class="section-label">📍 Indirizzo</label>
+                                <div class="form-group">
+                                    <label for="contactAddressStreet">Via</label>
+                                    <input type="text" id="contactAddressStreet" placeholder="Via, numero civico">
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group" style="flex: 2;">
+                                        <label for="contactAddressCity">Città</label>
+                                        <input type="text" id="contactAddressCity">
+                                    </div>
+                                    <div class="form-group" style="flex: 1;">
+                                        <label for="contactAddressZip">CAP</label>
+                                        <input type="text" id="contactAddressZip" maxlength="10">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group" style="flex: 1;">
+                                        <label for="contactAddressProvince">Provincia</label>
+                                        <input type="text" id="contactAddressProvince" maxlength="2" placeholder="es: MI">
+                                    </div>
+                                    <div class="form-group" style="flex: 2;">
+                                        <label for="contactAddressCountry">Paese</label>
+                                        <input type="text" id="contactAddressCountry" placeholder="es: Italia">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                             </div>
                             <div class="form-group">
                                 <label for="contactCategory">Categoria</label>
