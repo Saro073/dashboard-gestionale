@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head><title>Check Logs</title></head>
+<body>
+<h1>Activity Log Check</h1>
+<pre id="output"></pre>
+<script>
+const activityLog = localStorage.getItem('dashboard_activity_log');
+const currentUser = localStorage.getItem('dashboard_current_user');
+const output = document.getElementById('output');
+
+output.textContent = 'Current User:\n' + (currentUser || 'NONE') + '\n\n';
+output.textContent += 'Activity Log:\n' + (activityLog || 'EMPTY');
+
+console.log('Current User:', currentUser);
+console.log('Activity Log:', activityLog);
+</script>
+</body>
+</html>

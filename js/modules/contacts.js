@@ -81,6 +81,18 @@ const ContactsModule = {
         migrated = true;
       }
 
+      // MIGRAZIONE: Aggiungi struttura businessAddress se mancante
+      if (!contact.businessAddress) {
+        contact.businessAddress = {
+          street: '',
+          city: '',
+          zip: '',
+          province: '',
+          country: ''
+        };
+        migrated = true;
+      }
+
       if (migrated) migratedCount++;
     });
 
@@ -222,6 +234,13 @@ const ContactsModule = {
         zip: contactData.address?.zip?.trim() || '',
         province: contactData.address?.province?.trim() || '',
         country: contactData.address?.country?.trim() || ''
+      },
+      businessAddress: {
+        street: contactData.businessAddress?.street?.trim() || '',
+        city: contactData.businessAddress?.city?.trim() || '',
+        zip: contactData.businessAddress?.zip?.trim() || '',
+        province: contactData.businessAddress?.province?.trim() || '',
+        country: contactData.businessAddress?.country?.trim() || ''
       },
       company: contactData.company?.trim() || '',
       category: contactData.category || CONFIG.CONTACT_CATEGORIES.CLIENTE,
@@ -406,8 +425,11 @@ const ContactsModule = {
     const term = searchTerm.toLowerCase();
 
     return contacts.filter(contact => {
-      // Cerca nel nome
-      if (contact.name.toLowerCase().includes(term)) return true;
+      // Cerca in firstName e lastName
+      if (contact.firstName && contact.firstName.toLowerCase().includes(term)) return true;
+      if (contact.lastName && contact.lastName.toLowerCase().includes(term)) return true;
+      // Cerca anche nel campo legacy name
+      if (contact.name && contact.name.toLowerCase().includes(term)) return true;
 
       // Cerca nelle emails
       if (contact.emails && contact.emails.some(

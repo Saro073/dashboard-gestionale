@@ -16,7 +16,8 @@ const CONFIG = {
     DOCUMENTS: 'dashboard_documents',
     ACTIVITY_LOG: 'dashboard_activity_log',
     THEME: 'dashboard_theme',
-    BOOKINGS: 'dashboard_bookings'
+    BOOKINGS: 'dashboard_bookings',
+    ACCOUNTING: 'dashboard_accounting'
   },  
   // Ruoli utente
   ROLES: {
@@ -113,7 +114,8 @@ const CONFIG = {
     TASK: 'task',
     NOTE: 'note',
     DOCUMENT: 'document',
-    BOOKING: 'booking'
+    BOOKING: 'booking',
+    TRANSACTION: 'transaction'
   },  
   // Impostazioni UI
   UI: {

@@ -273,6 +273,27 @@ textarea {
   font-family: inherit;
 }
 
+/* Form Sections with Fieldset */
+.form-section {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background: var(--surface-color);
+}
+
+.form-section legend {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  padding: 0 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.form-section:last-of-type {
+  margin-bottom: 0;
+}
+
 /* Form Row for side-by-side inputs */
 .form-row {
   display: flex;
@@ -967,9 +988,8 @@ textarea {
 
 /* Wide modal variant for 2-column layouts */
 .modal-content.modal-wide {
-  max-width: 900px;
-  max-height: 90vh;
-  height: 90vh;
+  max-width: 700px;
+  max-height: 85vh;
   overflow: hidden;
 }
 
@@ -977,6 +997,10 @@ textarea {
 .modal-body {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
+  padding: 1.5rem;
+  padding-bottom: 0.5rem;
+}
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
@@ -1087,7 +1111,7 @@ textarea {
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
-  padding-top: 0.75rem;
+  padding: 1rem 1.5rem;
   margin-top: 0;
   border-top: 1px solid var(--border-color);
   flex-shrink: 0;
@@ -1605,4 +1629,227 @@ textarea {
 .calendar-day.selected {
   outline: 2px solid var(--primary-color);
   outline-offset: 2px;
+}
+
+/* ==================== ACCOUNTING SECTION ==================== */
+
+/* Financial Dashboard */
+.accounting-dashboard {
+  margin-bottom: 2rem;
+}
+
+.financial-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.financial-stat-card {
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+}
+
+.financial-stat-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.financial-stat-card .stat-icon {
+  font-size: 2.5rem;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  background: rgba(37, 99, 235, 0.1);
+}
+
+.financial-stat-card.income .stat-icon {
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.financial-stat-card.expense .stat-icon {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.financial-stat-card.balance .stat-icon {
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.financial-stat-card.balance.positive .stat-icon {
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.financial-stat-card.balance.negative .stat-icon {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.financial-stat-card .stat-info {
+  flex: 1;
+}
+
+.financial-stat-card .stat-label {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin-bottom: 0.25rem;
+  font-weight: 500;
+}
+
+.financial-stat-card h3 {
+  color: var(--text-primary);
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.financial-stat-card.income h3 {
+  color: var(--success-color);
+}
+
+.financial-stat-card.expense h3 {
+  color: var(--danger-color);
+}
+
+.financial-stat-card.balance.positive h3 {
+  color: var(--success-color);
+}
+
+.financial-stat-card.balance.negative h3 {
+  color: var(--danger-color);
+}
+
+/* Accounting Table */
+.accounting-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.accounting-table thead {
+  background: var(--bg-color);
+  border-bottom: 2px solid var(--border-color);
+}
+
+.accounting-table th {
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.accounting-table td {
+  padding: 1rem;
+  border-top: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+.accounting-table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.accounting-table tbody tr:hover {
+  background: var(--bg-color);
+}
+
+.transaction-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.transaction-badge.income {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success-color);
+}
+
+.transaction-badge.expense {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger-color);
+}
+
+.accounting-table .amount {
+  font-weight: 700;
+  font-size: 1.125rem;
+}
+
+.accounting-table .amount.income {
+  color: var(--success-color);
+}
+
+.accounting-table .amount.expense {
+  color: var(--danger-color);
+}
+
+.accounting-table td small {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+/* Responsive accounting table */
+@media (max-width: 1024px) {
+  .accounting-table {
+    display: block;
+    overflow-x: auto;
+  }
+  
+  .accounting-table thead,
+  .accounting-table tbody,
+  .accounting-table tr,
+  .accounting-table td,
+  .accounting-table th {
+    display: block;
+  }
+  
+  .accounting-table thead {
+    display: none;
+  }
+  
+  .accounting-table tr {
+    margin-bottom: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+  }
+  
+  .accounting-table td {
+    border: none;
+    padding: 0.5rem 0;
+    display: flex;
+    justify-content: space-between;
+  }
+  
+  .accounting-table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+}
+
+/* Transaction Form Categories */
+#transactionCategory optgroup {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+#transactionCategory option {
+  padding: 0.5rem;
 }

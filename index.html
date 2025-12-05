@@ -59,6 +59,11 @@
                     <span class="nav-icon">📅</span>
                     <span>Prenotazioni</span>
                 </a>
+                <!-- Accounting Section -->
+                <a href="#accounting" class="nav-item" data-section="accounting" id="accountingNavItem">
+                    <span class="nav-icon">💶</span>
+                    <span>Contabilità</span>
+                </a>
                 <!-- Activity Log Section -->
                 <a href="#activityLog" class="nav-item" data-section="activityLog" id="activityLogNavItem" >
                     <span class="nav-icon">📋</span>
@@ -172,7 +177,6 @@
                     </div>
                     <button id="addContactBtn" class="btn btn-primary">+ Aggiungi Contatto</button>
                 </div>
-                </div>
                 <div id="contactsList" class="items-grid">
                     <p class="empty-state">Nessun contatto presente</p>
                 </div>
@@ -269,6 +273,122 @@
                 </div>
             </div>
 
+            <!-- Accounting Section -->
+            <div id="accountingSection" class="content-section">
+                <!-- Financial Dashboard -->
+                <div class="accounting-dashboard">
+                    <div class="financial-stats-grid">
+                        <div class="financial-stat-card income">
+                            <div class="stat-icon">📈</div>
+                            <div class="stat-info">
+                                <p class="stat-label">Entrate Totali</p>
+                                <h3 id="totalIncome">€0.00</h3>
+                            </div>
+                        </div>
+                        <div class="financial-stat-card expense">
+                            <div class="stat-icon">📉</div>
+                            <div class="stat-info">
+                                <p class="stat-label">Uscite Totali</p>
+                                <h3 id="totalExpenses">€0.00</h3>
+                            </div>
+                        </div>
+                        <div class="financial-stat-card balance">
+                            <div class="stat-icon">💰</div>
+                            <div class="stat-info">
+                                <p class="stat-label">Saldo</p>
+                                <h3 id="balance">€0.00</h3>
+                            </div>
+                        </div>
+                        <div class="financial-stat-card transactions">
+                            <div class="stat-icon">🧾</div>
+                            <div class="stat-info">
+                                <p class="stat-label">Transazioni</p>
+                                <h3 id="transactionCount">0</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Toolbar -->
+                <div class="section-toolbar">
+                    <input type="text" id="accountingSearch" class="form-control" placeholder="Cerca transazioni...">
+                    <select id="accountingTypeFilter" class="form-control">
+                        <option value="all">Tutte</option>
+                        <option value="income">Entrate</option>
+                        <option value="expense">Uscite</option>
+                    </select>
+                    <select id="accountingCategoryFilter" class="form-control">
+                        <option value="all">Tutte le Categorie</option>
+                        <optgroup label="Entrate">
+                            <option value="booking">Prenotazione</option>
+                            <option value="extra_service">Servizi Extra</option>
+                            <option value="deposit">Caparra</option>
+                            <option value="other_income">Altro Ricavo</option>
+                        </optgroup>
+                        <optgroup label="Uscite">
+                            <option value="cleaning">Pulizie</option>
+                            <option value="maintenance">Manutenzione</option>
+                            <option value="utilities">Utenze</option>
+                            <option value="commission">Commissioni</option>
+                            <option value="insurance">Assicurazione</option>
+                            <option value="tax">Tasse</option>
+                            <option value="supplies">Forniture</option>
+                            <option value="marketing">Marketing</option>
+                            <option value="other_expense">Altra Spesa</option>
+                        </optgroup>
+                    </select>
+                    <select id="accountingMonthFilter" class="form-control">
+                        <option value="all">Tutti i Mesi</option>
+                        <option value="current">Mese Corrente</option>
+                        <option value="0">Gennaio</option>
+                        <option value="1">Febbraio</option>
+                        <option value="2">Marzo</option>
+                        <option value="3">Aprile</option>
+                        <option value="4">Maggio</option>
+                        <option value="5">Giugno</option>
+                        <option value="6">Luglio</option>
+                        <option value="7">Agosto</option>
+                        <option value="8">Settembre</option>
+                        <option value="9">Ottobre</option>
+                        <option value="10">Novembre</option>
+                        <option value="11">Dicembre</option>
+                    </select>
+                    <button id="addTransactionBtn" class="btn btn-primary">+ Nuova Transazione</button>
+                </div>
+
+                <!-- Transactions List -->
+                <div id="accountingList" class="items-list">
+                    <p class="empty-state">Nessuna transazione registrata</p>
+                </div>
+            </div>
+
+            <!-- Activity Log Section -->
+            <div id="activityLogSection" class="content-section">
+                <div class="section-toolbar">
+                    <input type="text" id="activityLogSearch" class="form-control" placeholder="Cerca attività...">
+                    <select id="activityLogFilter" class="form-control">
+                        <option value="all">Tutte le azioni</option>
+                        <option value="create">Creazione</option>
+                        <option value="update">Modifica</option>
+                        <option value="delete">Eliminazione</option>
+                        <option value="login">Login</option>
+                        <option value="logout">Logout</option>
+                    </select>
+                    <select id="activityLogEntityFilter" class="form-control">
+                        <option value="all">Tutte le entità</option>
+                        <option value="contact">Contatti</option>
+                        <option value="task">Task</option>
+                        <option value="note">Note</option>
+                        <option value="document">Documenti</option>
+                        <option value="booking">Prenotazioni</option>
+                        <option value="user">Utenti</option>
+                    </select>
+                </div>
+                <div id="activityLogList" class="items-list">
+                    <p class="empty-state">Nessuna attività registrata</p>
+                </div>
+            </div>
+
             <!-- Users Section (Admin Only) -->
             <div id="usersSection" class="content-section">
                 <div class="section-toolbar">
@@ -326,123 +446,150 @@
             </div>
             <div class="modal-body">
                 <form id="contactForm">
-                    <div class="form-grid-2col">
-                        <!-- COLONNA SINISTRA: Dati Principali -->
-                        <div class="form-col-left">
-                            <div class="form-row">
-                                <div class="form-group" style="flex: 1;">
-                                    <label for="contactFirstName">Nome *</label>
-                                    <input type="text" id="contactFirstName" required>
-                                </div>
-                                <div class="form-group" style="flex: 1;">
-                                    <label for="contactLastName">Cognome</label>
-                                    <input type="text" id="contactLastName">
-                                </div>
+                    <!-- INFORMAZIONI PERSONALI -->
+                    <fieldset class="form-section">
+                        <legend>👤 Informazioni Personali</legend>
+                        
+                        <div class="form-row">
+                            <div class="form-group" style="flex: 1;">
+                                <label for="contactFirstName">Nome *</label>
+                                <input type="text" id="contactFirstName" required>
                             </div>
-                            
-                            <!-- EMAILS MULTIPLI -->
-                            <div class="form-group">
-                                <label>Email</label>
-                                <div id="emailsContainer">
-                                    <div class="multi-input-row">
-                                        <input type="email" class="email-value" placeholder="email@esempio.com">
-                                        <input type="text" class="email-label" placeholder="Etichetta (es: Lavoro)">
-                                        <button type="button" class="btn-remove-field" onclick="app.removeEmailField(this)" title="Rimuovi email">✕</button>
-                                    </div>
-                                </div>
-                                <button type="button" class="btn btn-sm btn-secondary" onclick="app.addEmailField()" style="margin-top: 6px;">
-                                    ➕ Aggiungi Email
-                                </button>
-                            </div>
-                            
-                            <!-- TELEFONI MULTIPLI -->
-                            <div class="form-group">
-                                <label>Telefono</label>
-                                <div id="phonesContainer">
-                                    <div class="multi-input-row">
-                                        <input type="tel" class="phone-value" placeholder="+39 123 456 789">
-                                        <input type="text" class="phone-label" placeholder="Etichetta (es: Ufficio)">
-                                        <button type="button" class="btn-remove-field" onclick="app.removePhoneField(this)" title="Rimuovi telefono">✕</button>
-                                    </div>
-                                </div>
-                                <button type="button" class="btn btn-sm btn-secondary" onclick="app.addPhoneField()" style="margin-top: 6px;">
-                                    ➕ Aggiungi Telefono
-                                </button>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="contactCompany">Azienda</label>
-                                <input type="text" id="contactCompany">
-                            </div>
-                            <div class="form-group">
-                                <label for="contactCategory">Categoria</label>
-                                <input 
-                                    type="text" 
-                                    id="contactCategory" 
-                                    list="contactCategoryList" 
-                                    placeholder="Seleziona o digita una categoria..."
-                                    autocomplete="off"
-                                >
-                                <datalist id="contactCategoryList">
-                                    <!-- Popolato dinamicamente da CategoryManager -->
-                                </datalist>
-                                <small class="form-help-text">Digita per creare una nuova categoria</small>
-                            </div>
-                            
-                            <!-- SEZIONE INDIRIZZO -->
-                            <div class="form-group-section">
-                                <label class="section-label">📍 Indirizzo</label>
-                                <div class="form-group">
-                                    <label for="contactAddressStreet">Via</label>
-                                    <input type="text" id="contactAddressStreet" placeholder="Via, numero civico">
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-group" style="flex: 2;">
-                                        <label for="contactAddressCity">Città</label>
-                                        <input type="text" id="contactAddressCity">
-                                    </div>
-                                    <div class="form-group" style="flex: 1;">
-                                        <label for="contactAddressZip">CAP</label>
-                                        <input type="text" id="contactAddressZip" maxlength="10">
-                                    </div>
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-group" style="flex: 1;">
-                                        <label for="contactAddressProvince">Provincia</label>
-                                        <input type="text" id="contactAddressProvince" maxlength="2" placeholder="es: MI">
-                                    </div>
-                                    <div class="form-group" style="flex: 2;">
-                                        <label for="contactAddressCountry">Paese</label>
-                                        <input type="text" id="contactAddressCountry" placeholder="es: Italia">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="contactCategory">Categoria</label>
-                                <input 
-                                    type="text" 
-                                    id="contactCategory" 
-                                    list="contactCategoryList" 
-                                    placeholder="Seleziona o digita una categoria..."
-                                    autocomplete="off"
-                                >
-                                <datalist id="contactCategoryList">
-                                    <!-- Popolato dinamicamente da CategoryManager -->
-                                </datalist>
-                                <small class="form-help-text">Digita per creare una nuova categoria</small>
+                            <div class="form-group" style="flex: 1;">
+                                <label for="contactLastName">Cognome</label>
+                                <input type="text" id="contactLastName">
                             </div>
                         </div>
                         
-                        <!-- COLONNA DESTRA: Note -->
-                        <div class="form-col-right">
-                            <div class="form-group">
-                                <label for="contactNotes">Note</label>
-                                <textarea id="contactNotes" rows="16"></textarea>
+                        <div class="form-group">
+                            <label for="contactCompany">Azienda</label>
+                            <input type="text" id="contactCompany">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="contactCategory">Categoria</label>
+                            <input 
+                                type="text" 
+                                id="contactCategory" 
+                                list="contactCategoryList" 
+                                placeholder="Seleziona o digita..."
+                                autocomplete="off"
+                            >
+                            <datalist id="contactCategoryList"></datalist>
+                            <small class="form-help-text">Digita per creare una nuova categoria</small>
+                        </div>
+                    </fieldset>
+                    
+                    <!-- CONTATTI -->
+                    <fieldset class="form-section">
+                        <legend>📧 Contatti</legend>
+                        
+                        <div class="form-group">
+                            <label>Email</label>
+                            <div id="emailsContainer">
+                                <div class="multi-input-row">
+                                    <input type="email" class="email-value" placeholder="email@esempio.com">
+                                    <input type="text" class="email-label" placeholder="Etichetta">
+                                    <button type="button" class="btn-remove-field" onclick="app.removeEmailField(this)" title="Rimuovi">✕</button>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="app.addEmailField()" style="margin-top: 6px;">
+                                + Aggiungi Email
+                            </button>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Telefono</label>
+                            <div id="phonesContainer">
+                                <div class="multi-input-row">
+                                    <input type="tel" class="phone-value" placeholder="+39 123 456 789">
+                                    <input type="text" class="phone-label" placeholder="Etichetta">
+                                    <button type="button" class="btn-remove-field" onclick="app.removePhoneField(this)" title="Rimuovi">✕</button>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="app.addPhoneField()" style="margin-top: 6px;">
+                                + Aggiungi Telefono
+                            </button>
+                        </div>
+                    </fieldset>
+                    
+                    <!-- INDIRIZZO PRIVATO -->
+                    <fieldset class="form-section">
+                        <legend>🏠 Indirizzo Privato</legend>
+                        
+                        <div class="form-group">
+                            <label for="contactAddressStreet">Via</label>
+                            <input type="text" id="contactAddressStreet" placeholder="Via, numero civico">
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group" style="flex: 2;">
+                                <label for="contactAddressCity">Città</label>
+                                <input type="text" id="contactAddressCity">
+                            </div>
+                            <div class="form-group" style="flex: 1;">
+                                <label for="contactAddressZip">CAP</label>
+                                <input type="text" id="contactAddressZip" maxlength="10">
                             </div>
                         </div>
-                    </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group" style="flex: 1;">
+                                <label for="contactAddressProvince">Provincia</label>
+                                <input type="text" id="contactAddressProvince" maxlength="2" placeholder="es: MI">
+                            </div>
+                            <div class="form-group" style="flex: 2;">
+                                <label for="contactAddressCountry">Paese</label>
+                                <input type="text" id="contactAddressCountry" placeholder="es: Italia">
+                            </div>
+                        </div>
+                    </fieldset>
+                    
+                    <!-- INDIRIZZO AZIENDALE -->
+                    <fieldset class="form-section">
+                        <legend>🏢 Indirizzo Aziendale <small style="font-weight: 400; color: var(--text-muted);">(opzionale)</small></legend>
+                        
+                        <div class="form-group">
+                            <label for="contactBusinessAddressStreet">Via</label>
+                            <input type="text" id="contactBusinessAddressStreet" placeholder="Via, numero civico">
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group" style="flex: 2;">
+                                <label for="contactBusinessAddressCity">Città</label>
+                                <input type="text" id="contactBusinessAddressCity">
+                            </div>
+                            <div class="form-group" style="flex: 1;">
+                                <label for="contactBusinessAddressZip">CAP</label>
+                                <input type="text" id="contactBusinessAddressZip" maxlength="10">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group" style="flex: 1;">
+                                <label for="contactBusinessAddressProvince">Provincia</label>
+                                <input type="text" id="contactBusinessAddressProvince" maxlength="2" placeholder="es: MI">
+                            </div>
+                            <div class="form-group" style="flex: 2;">
+                                <label for="contactBusinessAddressCountry">Paese</label>
+                                <input type="text" id="contactBusinessAddressCountry" placeholder="es: Italia">
+                            </div>
+                        </div>
+                    </fieldset>
+                            <div class="form-group" style="flex: 2;">
+                                <label for="contactAddressCountry">Paese</label>
+                                <input type="text" id="contactAddressCountry" placeholder="es: Italia">
+                            </div>
+                        </div>
+                    </fieldset>
+                    
+                    <!-- NOTE -->
+                    <fieldset class="form-section">
+                        <legend>📝 Note</legend>
+                        <div class="form-group">
+                            <textarea id="contactNotes" rows="4" placeholder="Aggiungi note o informazioni aggiuntive..."></textarea>
+                        </div>
+                    </fieldset>
                     
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" onclick="document.getElementById('contactModal').classList.remove('active')">Annulla</button>
@@ -728,6 +875,88 @@
         </div>
     </div>
 
+    <!-- Transaction Modal -->
+    <div id="transactionModal" class="modal">
+        <div class="modal-content modal-wide">
+            <div class="modal-header">
+                <h2 id="transactionModalTitle">Nuova Transazione</h2>
+                <button class="modal-close" onclick="document.getElementById('transactionModal').classList.remove('active')">&times;</button>
+            </div>
+            <form id="transactionForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="transactionType">Tipo *</label>
+                        <select id="transactionType" required>
+                            <option value="income">Entrata</option>
+                            <option value="expense">Uscita</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="transactionAmount">Importo (€) *</label>
+                        <input type="number" id="transactionAmount" min="0.01" step="0.01" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="transactionCategory">Categoria *</label>
+                        <select id="transactionCategory" required>
+                            <optgroup label="Entrate" id="incomeCategoriesGroup">
+                                <option value="booking">Prenotazione</option>
+                                <option value="extra_service">Servizi Extra</option>
+                                <option value="deposit">Caparra</option>
+                                <option value="other_income">Altro Ricavo</option>
+                            </optgroup>
+                            <optgroup label="Uscite" id="expenseCategoriesGroup" style="display:none">
+                                <option value="cleaning">Pulizie</option>
+                                <option value="maintenance">Manutenzione</option>
+                                <option value="utilities">Utenze</option>
+                                <option value="commission">Commissioni</option>
+                                <option value="insurance">Assicurazione</option>
+                                <option value="tax">Tasse</option>
+                                <option value="supplies">Forniture</option>
+                                <option value="marketing">Marketing</option>
+                                <option value="other_expense">Altra Spesa</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="transactionDate">Data *</label>
+                        <input type="date" id="transactionDate" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="transactionDescription">Descrizione *</label>
+                    <input type="text" id="transactionDescription" required placeholder="Es: Pagamento prenotazione dicembre">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="transactionPaymentMethod">Metodo Pagamento</label>
+                        <select id="transactionPaymentMethod">
+                            <option value="cash">Contanti</option>
+                            <option value="card">Carta</option>
+                            <option value="bank_transfer">Bonifico</option>
+                            <option value="paypal">PayPal</option>
+                            <option value="stripe">Stripe</option>
+                            <option value="other">Altro</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="transactionReceiptNumber">N° Ricevuta/Fattura</label>
+                        <input type="text" id="transactionReceiptNumber" placeholder="Es: FAT-2024-001">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="transactionNotes">Note</label>
+                    <textarea id="transactionNotes" rows="3" placeholder="Note aggiuntive..."></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('transactionModal').classList.remove('active')">Annulla</button>
+                    <button type="submit" class="btn btn-primary">Salva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Scripts: ORDINE CRITICO! -->
     <!-- 1. Configurazione -->
     <script src="js/config.js"></script>
@@ -754,6 +983,7 @@
     <script src="js/modules/notes.js"></script>
     <script src="js/modules/documents.js"></script>
     <script src="js/modules/bookings.js"></script>
+    <script src="js/modules/accounting.js"></script>
     <script src="js/modules/users-management.js"></script>
     
     <!-- 6. Componenti -->

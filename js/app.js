@@ -6,6 +6,7 @@ class DashboardApp {
     this.currentEditingTaskId = null; // Per gestire edit task
     this.currentEditingNoteId = null; // Per gestire edit note
     this.currentEditingContactId = null; // Contatti
+    this.currentEditingTransactionId = null; // Transazioni
     this.init();
   }
   
@@ -104,6 +105,17 @@ class DashboardApp {
     EventBus.on(EVENTS.USER_CREATED, () => this.renderActivityLog());
     EventBus.on(EVENTS.USER_UPDATED, () => this.renderActivityLog());
     EventBus.on(EVENTS.USER_DELETED, () => this.renderActivityLog());
+    
+    // Accounting - aggiorna stats e rendering
+    EventBus.on(EVENTS.TRANSACTION_CREATED, () => {
+      this.updateStats();
+      this.renderAccounting();
+    });
+    EventBus.on(EVENTS.TRANSACTION_UPDATED, () => this.renderAccounting());
+    EventBus.on(EVENTS.TRANSACTION_DELETED, () => {
+      this.updateStats();
+      this.renderAccounting();
+    });
   }
   
   /**
@@ -181,6 +193,9 @@ class DashboardApp {
     
     // Bookings
     BookingsHandlers.setupBookingsListeners();
+    
+    // Accounting
+    this.setupAccountingListeners();
     
     // Activity Log
     this.setupActivityLogListeners();
@@ -285,6 +300,7 @@ class DashboardApp {
     this.renderTasks();
     this.renderNotes();
     this.renderDocuments();
+    this.renderAccounting();
     this.renderRecentActivity();
     this.renderActivityLog();
     
@@ -383,9 +399,40 @@ class DashboardApp {
     const sortValue = document.getElementById('contactSort').value;
     const viewType = localStorage.getItem('contacts_view_preference') || 'grid';
     
+    // Apply category filter first
     let filtered = ContactsModule.filterByCategory(filter);
+    
+    // Then apply search on already filtered results
     if (search) {
-      filtered = ContactsModule.search(search);
+      const term = search.toLowerCase();
+      filtered = filtered.filter(contact => {
+        // Cerca in firstName e lastName
+        if (contact.firstName && contact.firstName.toLowerCase().includes(term)) return true;
+        if (contact.lastName && contact.lastName.toLowerCase().includes(term)) return true;
+        // Cerca anche nel campo legacy name
+        if (contact.name && contact.name.toLowerCase().includes(term)) return true;
+        // Cerca nelle emails
+        if (contact.emails && contact.emails.some(
+          e => e.value.toLowerCase().includes(term) || e.label.toLowerCase().includes(term)
+        )) return true;
+        // Cerca nei telefoni
+        if (contact.phones && contact.phones.some(
+          p => p.value.toLowerCase().includes(term) || p.label.toLowerCase().includes(term)
+        )) return true;
+        // Cerca in company e notes
+        if (contact.company && contact.company.toLowerCase().includes(term)) return true;
+        if (contact.notes && contact.notes.toLowerCase().includes(term)) return true;
+        // Cerca negli indirizzi
+        if (contact.address) {
+          if (contact.address.city && contact.address.city.toLowerCase().includes(term)) return true;
+          if (contact.address.street && contact.address.street.toLowerCase().includes(term)) return true;
+        }
+        if (contact.businessAddress) {
+          if (contact.businessAddress.city && contact.businessAddress.city.toLowerCase().includes(term)) return true;
+          if (contact.businessAddress.street && contact.businessAddress.street.toLowerCase().includes(term)) return true;
+        }
+        return false;
+      });
     }
     
     // Apply sorting
@@ -808,6 +855,310 @@ class DashboardApp {
     }
   }
   
+  // ==================== ACCOUNTING ====================
+  
+  /**
+   * Render accounting dashboard and transactions
+   */
+  renderAccounting() {
+    // Render financial stats
+    this.renderFinancialStats();
+    
+    // Render transactions list
+    const container = document.getElementById('accountingList');
+    if (!container) return;
+    
+    const typeFilter = document.getElementById('accountingTypeFilter')?.value || 'all';
+    const categoryFilter = document.getElementById('accountingCategoryFilter')?.value || 'all';
+    const monthFilter = document.getElementById('accountingMonthFilter')?.value || 'all';
+    const search = document.getElementById('accountingSearch')?.value || '';
+    
+    let transactions = AccountingModule.getAll();
+    
+    // Apply filters
+    if (typeFilter !== 'all') {
+      transactions = AccountingModule.filterByType(typeFilter);
+    }
+    
+    if (categoryFilter !== 'all') {
+      transactions = AccountingModule.filterByCategory(categoryFilter);
+    }
+    
+    if (monthFilter !== 'all') {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = monthFilter === 'current' ? now.getMonth() : parseInt(monthFilter);
+      transactions = transactions.filter(t => {
+        const tDate = new Date(t.date);
+        return tDate.getFullYear() === year && tDate.getMonth() === month;
+      });
+    }
+    
+    if (search) {
+      const term = search.toLowerCase();
+      transactions = transactions.filter(t => {
+        return (
+          t.description.toLowerCase().includes(term) ||
+          AccountingModule.formatCategory(t.category).toLowerCase().includes(term) ||
+          t.receiptNumber.toLowerCase().includes(term) ||
+          t.amount.toString().includes(term)
+        );
+      });
+    }
+    
+    // Sort by date (most recent first)
+    transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+    
+    if (transactions.length === 0) {
+      container.innerHTML = '<p class="empty-state">Nessuna transazione trovata</p>';
+      return;
+    }
+    
+    container.innerHTML = `
+      <table class="accounting-table">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Tipo</th>
+            <th>Categoria</th>
+            <th>Descrizione</th>
+            <th>Importo</th>
+            <th>Metodo</th>
+            <th>Azioni</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${transactions.map(transaction => `
+            <tr class="transaction-row ${transaction.type}">
+              <td>${Utils.formatDate(new Date(transaction.date))}</td>
+              <td>
+                <span class="transaction-badge ${transaction.type}">
+                  ${transaction.type === 'income' ? '📈 Entrata' : '📉 Uscita'}
+                </span>
+              </td>
+              <td>${Utils.escapeHtml(AccountingModule.formatCategory(transaction.category))}</td>
+              <td>
+                <strong>${Utils.escapeHtml(transaction.description)}</strong>
+                ${transaction.receiptNumber ? `<br><small>N° ${Utils.escapeHtml(transaction.receiptNumber)}</small>` : ''}
+              </td>
+              <td class="amount ${transaction.type}">
+                ${transaction.type === 'income' ? '+' : '-'}€${transaction.amount.toFixed(2)}
+              </td>
+              <td>${Utils.escapeHtml(AccountingModule.formatPaymentMethod(transaction.paymentMethod))}</td>
+              <td>
+                <button class="btn btn-sm btn-secondary" onclick="app.editTransaction(${transaction.id})">✏️</button>
+                <button class="btn btn-sm btn-danger" onclick="app.deleteTransaction(${transaction.id})">🗑️</button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+  
+  /**
+   * Render financial statistics dashboard
+   */
+  renderFinancialStats() {
+    const monthFilter = document.getElementById('accountingMonthFilter')?.value || 'all';
+    
+    let stats;
+    if (monthFilter === 'all') {
+      stats = AccountingModule.getStats();
+    } else if (monthFilter === 'current') {
+      const now = new Date();
+      stats = AccountingModule.getStats(now.getFullYear(), now.getMonth());
+    } else {
+      const now = new Date();
+      const month = parseInt(monthFilter);
+      stats = AccountingModule.getStats(now.getFullYear(), month);
+    }
+    
+    // Update dashboard cards
+    const totalIncomeEl = document.getElementById('totalIncome');
+    const totalExpensesEl = document.getElementById('totalExpenses');
+    const balanceEl = document.getElementById('balance');
+    const transactionCountEl = document.getElementById('transactionCount');
+    
+    if (totalIncomeEl) totalIncomeEl.textContent = `€${stats.totalIncome.toFixed(2)}`;
+    if (totalExpensesEl) totalExpensesEl.textContent = `€${stats.totalExpenses.toFixed(2)}`;
+    if (transactionCountEl) transactionCountEl.textContent = stats.transactionCount;
+    
+    if (balanceEl) {
+      balanceEl.textContent = `€${stats.balance.toFixed(2)}`;
+      // Update color based on balance
+      const balanceCard = balanceEl.closest('.financial-stat-card');
+      if (balanceCard) {
+        balanceCard.classList.remove('positive', 'negative');
+        if (stats.balance > 0) {
+          balanceCard.classList.add('positive');
+        } else if (stats.balance < 0) {
+          balanceCard.classList.add('negative');
+        }
+      }
+    }
+  }
+  
+  /**
+   * Open transaction modal (create or edit)
+   */
+  openTransactionModal(transactionId = null) {
+    const modal = document.getElementById('transactionModal');
+    const title = document.getElementById('transactionModalTitle');
+    const form = document.getElementById('transactionForm');
+    
+    form.reset();
+    this.currentEditingTransactionId = transactionId;
+    
+    if (transactionId) {
+      // Edit mode
+      title.textContent = 'Modifica Transazione';
+      const transaction = AccountingModule.getById(transactionId);
+      
+      if (transaction) {
+        document.getElementById('transactionType').value = transaction.type;
+        document.getElementById('transactionAmount').value = transaction.amount;
+        document.getElementById('transactionCategory').value = transaction.category;
+        document.getElementById('transactionDate').value = transaction.date;
+        document.getElementById('transactionDescription').value = transaction.description;
+        document.getElementById('transactionPaymentMethod').value = transaction.paymentMethod;
+        document.getElementById('transactionReceiptNumber').value = transaction.receiptNumber || '';
+        document.getElementById('transactionNotes').value = transaction.notes || '';
+        
+        // Update categories dropdown based on type
+        this.updateTransactionCategories(transaction.type);
+      }
+    } else {
+      // Create mode
+      title.textContent = 'Nuova Transazione';
+      document.getElementById('transactionDate').valueAsDate = new Date();
+      this.updateTransactionCategories('income');
+    }
+    
+    modal.classList.add('active');
+  }
+  
+  /**
+   * Edit transaction
+   */
+  editTransaction(id) {
+    this.openTransactionModal(id);
+  }
+  
+  /**
+   * Save transaction (create or update)
+   */
+  saveTransaction(e) {
+    e.preventDefault();
+    
+    const transactionData = {
+      type: document.getElementById('transactionType').value,
+      amount: document.getElementById('transactionAmount').value,
+      category: document.getElementById('transactionCategory').value,
+      date: document.getElementById('transactionDate').value,
+      description: document.getElementById('transactionDescription').value,
+      paymentMethod: document.getElementById('transactionPaymentMethod').value,
+      receiptNumber: document.getElementById('transactionReceiptNumber').value,
+      notes: document.getElementById('transactionNotes').value
+    };
+    
+    let result;
+    if (this.currentEditingTransactionId) {
+      // Update
+      result = AccountingModule.update(this.currentEditingTransactionId, transactionData);
+    } else {
+      // Create
+      result = AccountingModule.create(transactionData);
+    }
+    
+    if (result.success) {
+      document.getElementById('transactionModal').classList.remove('active');
+      this.currentEditingTransactionId = null;
+    }
+  }
+  
+  /**
+   * Delete transaction
+   */
+  deleteTransaction(id) {
+    if (!confirm('Sei sicuro di voler eliminare questa transazione?')) {
+      return;
+    }
+    
+    const result = AccountingModule.delete(id);
+    if (!result.success) {
+      NotificationService.error(result.message);
+    }
+  }
+  
+  /**
+   * Update category dropdown based on transaction type
+   */
+  updateTransactionCategories(type) {
+    const incomeGroup = document.getElementById('incomeCategoriesGroup');
+    const expenseGroup = document.getElementById('expenseCategoriesGroup');
+    
+    if (type === 'income') {
+      incomeGroup.style.display = '';
+      expenseGroup.style.display = 'none';
+      // Select first income category
+      document.getElementById('transactionCategory').value = 'booking';
+    } else {
+      incomeGroup.style.display = 'none';
+      expenseGroup.style.display = '';
+      // Select first expense category
+      document.getElementById('transactionCategory').value = 'cleaning';
+    }
+  }
+  
+  // ==================== ACCOUNTING LISTENERS ====================
+  
+  setupAccountingListeners() {
+    // Add transaction button
+    const addBtn = document.getElementById('addTransactionBtn');
+    if (addBtn) {
+      addBtn.addEventListener('click', () => this.openTransactionModal());
+    }
+    
+    // Transaction form submit
+    const form = document.getElementById('transactionForm');
+    if (form) {
+      form.addEventListener('submit', (e) => this.saveTransaction(e));
+    }
+    
+    // Type change - update categories
+    const typeSelect = document.getElementById('transactionType');
+    if (typeSelect) {
+      typeSelect.addEventListener('change', (e) => {
+        this.updateTransactionCategories(e.target.value);
+      });
+    }
+    
+    // Filters
+    const typeFilter = document.getElementById('accountingTypeFilter');
+    if (typeFilter) {
+      typeFilter.addEventListener('change', () => this.renderAccounting());
+    }
+    
+    const categoryFilter = document.getElementById('accountingCategoryFilter');
+    if (categoryFilter) {
+      categoryFilter.addEventListener('change', () => this.renderAccounting());
+    }
+    
+    const monthFilter = document.getElementById('accountingMonthFilter');
+    if (monthFilter) {
+      monthFilter.addEventListener('change', () => this.renderAccounting());
+    }
+    
+    // Search
+    const search = document.getElementById('accountingSearch');
+    if (search) {
+      search.addEventListener('input', 
+        Utils.debounce(() => this.renderAccounting(), 300)
+      );
+    }
+  }
+  
   // ==================== CONTACTS LISTENERS ====================
   
   setupContactsListeners() {
@@ -859,6 +1210,12 @@ class DashboardApp {
     document.getElementById('contactAddressZip').value = '';
     document.getElementById('contactAddressProvince').value = '';
     document.getElementById('contactAddressCountry').value = '';
+    // Reset business address fields
+    document.getElementById('contactBusinessAddressStreet').value = '';
+    document.getElementById('contactBusinessAddressCity').value = '';
+    document.getElementById('contactBusinessAddressZip').value = '';
+    document.getElementById('contactBusinessAddressProvince').value = '';
+    document.getElementById('contactBusinessAddressCountry').value = '';
     this.populateCategoryDatalist();
     document.getElementById('contactModal').classList.add('active');
     EventBus.emit(EVENTS.MODAL_OPENED, { modal: 'contact' });
@@ -886,6 +1243,15 @@ class DashboardApp {
       document.getElementById('contactAddressZip').value = contact.address.zip || '';
       document.getElementById('contactAddressProvince').value = contact.address.province || '';
       document.getElementById('contactAddressCountry').value = contact.address.country || '';
+    }
+    
+    // Popola indirizzo aziendale
+    if (contact.businessAddress) {
+      document.getElementById('contactBusinessAddressStreet').value = contact.businessAddress.street || '';
+      document.getElementById('contactBusinessAddressCity').value = contact.businessAddress.city || '';
+      document.getElementById('contactBusinessAddressZip').value = contact.businessAddress.zip || '';
+      document.getElementById('contactBusinessAddressProvince').value = contact.businessAddress.province || '';
+      document.getElementById('contactBusinessAddressCountry').value = contact.businessAddress.country || '';
     }
 
     const emailsContainer = document.getElementById('emailsContainer');
@@ -958,8 +1324,16 @@ class DashboardApp {
       province: document.getElementById('contactAddressProvince').value.trim(),
       country: document.getElementById('contactAddressCountry').value.trim()
     };
+    
+    const businessAddress = {
+      street: document.getElementById('contactBusinessAddressStreet').value.trim(),
+      city: document.getElementById('contactBusinessAddressCity').value.trim(),
+      zip: document.getElementById('contactBusinessAddressZip').value.trim(),
+      province: document.getElementById('contactBusinessAddressProvince').value.trim(),
+      country: document.getElementById('contactBusinessAddressCountry').value.trim()
+    };
 
-    const payload = { firstName, lastName, emails, phones, address, company, category, notes };
+    const payload = { firstName, lastName, emails, phones, address, businessAddress, company, category, notes };
     let result;
     if (this.currentEditingContactId) {
       result = ContactsModule.update(this.currentEditingContactId, payload);

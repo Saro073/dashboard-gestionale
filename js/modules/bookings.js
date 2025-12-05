@@ -97,6 +97,25 @@ const BookingsModule = {
     });
 
     EventBus.emit(EVENTS.BOOKING_CREATED, booking);
+    
+    // Crea transazione automatica se prenotazione pagata
+    if (booking.isPaid && booking.totalAmount > 0) {
+      const transactionData = {
+        type: 'income',
+        category: 'booking',
+        amount: booking.totalAmount,
+        date: booking.checkIn,
+        description: `Prenotazione: ${booking.guestName}`,
+        paymentMethod: 'bank_transfer',
+        bookingId: booking.id,
+        notes: `Check-in: ${booking.checkIn}, Check-out: ${booking.checkOut}`
+      };
+      
+      if (typeof AccountingModule !== 'undefined') {
+        AccountingModule.create(transactionData);
+      }
+    }
+    
     NotificationService.success(`Prenotazione per "${booking.guestName}" creata!`);
 
     return { success: true, booking, message: 'Prenotazione creata' };
@@ -127,6 +146,8 @@ const BookingsModule = {
     }
 
     const currentUser = AuthManager.getCurrentUser();
+    const oldBooking = { ...bookings[index] };
+    
     bookings[index] = {
       ...bookings[index],
       ...updates,
@@ -139,6 +160,25 @@ const BookingsModule = {
 
     ActivityLog.log(CONFIG.ACTION_TYPES.UPDATE, 'booking', id, updates);
     EventBus.emit(EVENTS.BOOKING_UPDATED, bookings[index]);
+    
+    // Se isPaid passa da false a true, crea transazione
+    if (!oldBooking.isPaid && bookings[index].isPaid && bookings[index].totalAmount > 0) {
+      const transactionData = {
+        type: 'income',
+        category: 'booking',
+        amount: bookings[index].totalAmount,
+        date: bookings[index].checkIn,
+        description: `Prenotazione: ${bookings[index].guestName}`,
+        paymentMethod: 'bank_transfer',
+        bookingId: bookings[index].id,
+        notes: `Check-in: ${bookings[index].checkIn}, Check-out: ${bookings[index].checkOut}`
+      };
+      
+      if (typeof AccountingModule !== 'undefined') {
+        AccountingModule.create(transactionData);
+      }
+    }
+    
     NotificationService.success('Prenotazione aggiornata!');
 
     return { success: true, booking: bookings[index], message: 'Prenotazione aggiornata' };

@@ -175,6 +175,12 @@ const EVENTS = {
   BOOKING_DELETED: 'booking:deleted',
   BOOKINGS_LOADED: 'bookings:loaded',
 
+  // Transazioni
+  TRANSACTION_CREATED: 'transaction:created',
+  TRANSACTION_UPDATED: 'transaction:updated',
+  TRANSACTION_DELETED: 'transaction:deleted',
+  TRANSACTIONS_LOADED: 'transactions:loaded',
+
   // UI
   SECTION_CHANGED: 'ui:section-changed',
   THEME_CHANGED: 'ui:theme-changed',
