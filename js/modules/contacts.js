@@ -280,8 +280,6 @@ const ContactsModule = {
       NotificationService.error('Nome richiesto');
       return { success: false, contact: null, message: 'Nome richiesto' };
     }
-      return { success: false, contact: null, message: 'Nome richiesto' };
-    }
 
     // Validazione emails se presenti negli updates
     if (updates.emails) {
