@@ -133,6 +133,8 @@ const Router = {
       notes: 'Note',
       documents: 'Documenti',
       bookings: 'Prenotazioni',
+      cleaning: 'Pulizie',
+      maintenance: 'Manutenzione',
       accounting: 'Contabilità',
       activityLog: 'Registro Attività',
       users: 'Gestione Utenti',

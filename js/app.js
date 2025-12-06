@@ -1737,7 +1737,10 @@ class DashboardApp {
     return `
       <div class="item-card">
         <div class="item-header">
-          <h3>${cleaning.guestName || 'Pulizia Standard'}</h3>
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <input type="checkbox" class="cleaning-checkbox" data-id="${cleaning.id}" style="width: 20px; height: 20px; cursor: pointer;">
+            <h3 style="margin: 0;">${cleaning.guestName || 'Pulizia Standard'}</h3>
+          </div>
           <div class="item-actions">
             <button class="btn-icon" onclick="app.openChecklistModal(${cleaning.id})" title="Checklist">📋</button>
             <button class="btn-icon" onclick="app.editCleaning(${cleaning.id})" title="Modifica">✏️</button>
@@ -1770,6 +1773,28 @@ class DashboardApp {
     if (addBtn) {
       addBtn.addEventListener('click', () => this.openCleaningModal());
     }
+    
+    // Seleziona tutto
+    const selectAllBtn = document.getElementById('selectAllCleanings');
+    if (selectAllBtn) {
+      selectAllBtn.addEventListener('change', (e) => {
+        document.querySelectorAll('.cleaning-checkbox').forEach(cb => cb.checked = e.target.checked);
+        this.updateDeleteSelectedButton();
+      });
+    }
+    
+    // Elimina selezionate
+    const deleteSelectedBtn = document.getElementById('deleteSelectedCleanings');
+    if (deleteSelectedBtn) {
+      deleteSelectedBtn.addEventListener('click', () => this.deleteSelectedCleanings());
+    }
+    
+    // Update button quando cambiano le checkbox
+    document.addEventListener('change', (e) => {
+      if (e.target.classList.contains('cleaning-checkbox')) {
+        this.updateDeleteSelectedButton();
+      }
+    });
     
     const form = document.getElementById('cleaningForm');
     if (form) {
@@ -1848,7 +1873,7 @@ class DashboardApp {
     const select = document.getElementById('cleaningAssignedTo');
     if (!select) return;
     
-    const users = UsersModule ? UsersModule.getAll() : [];
+    const users = UsersManagementModule ? UsersManagementModule.getAll() : [];
     const staffOptions = users.map(u => 
       `<option value="${u.username}">${u.username}</option>`
     ).join('');
@@ -1898,6 +1923,33 @@ class DashboardApp {
     CleaningModule.delete(id);
     NotificationService.success('Pulizia eliminata');
     this.renderCleaning();
+  }
+  
+  updateDeleteSelectedButton() {
+    const selected = document.querySelectorAll('.cleaning-checkbox:checked');
+    const btn = document.getElementById('deleteSelectedCleanings');
+    if (btn) {
+      btn.style.display = selected.length > 0 ? 'block' : 'none';
+      btn.textContent = `🗑️ Elimina selezionate (${selected.length})`;
+    }
+  }
+  
+  deleteSelectedCleanings() {
+    const selected = Array.from(document.querySelectorAll('.cleaning-checkbox:checked'));
+    const count = selected.length;
+    
+    if (count === 0) return;
+    if (!confirm(`Eliminare ${count} pulizie selezionate?`)) return;
+    
+    selected.forEach(cb => {
+      const id = parseInt(cb.dataset.id);
+      CleaningModule.delete(id);
+    });
+    
+    NotificationService.success(`${count} pulizie eliminate`);
+    document.getElementById('selectAllCleanings').checked = false;
+    this.renderCleaning();
+    this.updateDeleteSelectedButton();
   }
   
   startCleaning(id) {
@@ -2255,9 +2307,9 @@ class DashboardApp {
   saveTelegramConfig() {
     const botToken = document.getElementById('telegramBotToken').value.trim();
     const chatIds = {
-      cleaning: document.getElementById('telegramCleaningChatId').value.trim(),
-      maintenance: document.getElementById('telegramMaintenanceChatId').value.trim(),
-      admin: document.getElementById('telegramAdminChatId').value.trim()
+      cleaning: parseInt(document.getElementById('telegramCleaningChatId').value.trim()) || null,
+      maintenance: parseInt(document.getElementById('telegramMaintenanceChatId').value.trim()) || null,
+      admin: parseInt(document.getElementById('telegramAdminChatId').value.trim()) || null
     };
     
     if (!botToken) {

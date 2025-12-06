@@ -88,6 +88,13 @@ const CleaningModule = {
       // Emetti evento
       EventBus.emit('CLEANING_CREATED', cleaning);
       
+      // Invia notifica Telegram se configurato
+      if (typeof TelegramService !== 'undefined' && TelegramService.isConfigured()) {
+        TelegramService.notifyNewCleaning(cleaning).catch(err => {
+          console.error('Errore invio notifica Telegram:', err);
+        });
+      }
+      
       return cleaning;
     } catch (error) {
       ErrorHandler.handle(error, 'CleaningModule.create');
@@ -207,10 +214,17 @@ const CleaningModule = {
    * @returns {object} - Pulizia aggiornata
    */
   start(id) {
-    return this.update(id, {
+    const cleaning = this.getById(id);
+    
+    // Log attività
+    ActivityLog.log('update', 'cleaning', id, { action: 'started' });
+    
+    const result = this.update(id, {
       status: 'in-progress',
       startedAt: new Date().toISOString()
     });
+    
+    return result;
   },
 
   /**
@@ -250,11 +264,23 @@ const CleaningModule = {
       }
     }
     
-    return this.update(id, {
+    // Log attività
+    ActivityLog.log('update', 'cleaning', id, { action: 'completed', duration: actualDuration });
+    
+    const result = this.update(id, {
       status: 'completed',
       actualDuration: actualDuration || cleaning.estimatedDuration,
       completedAt: new Date().toISOString()
     });
+    
+    // Invia notifica Telegram se configurato
+    if (typeof TelegramService !== 'undefined' && TelegramService.isConfigured()) {
+      TelegramService.notifyCleaningCompleted(result, actualDuration || cleaning.estimatedDuration).catch(err => {
+        console.error('Errore invio notifica Telegram completamento:', err);
+      });
+    }
+    
+    return result;
   },
 
   /**

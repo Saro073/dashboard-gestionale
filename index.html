@@ -331,6 +331,11 @@
 
                 <!-- Toolbar -->
                 <div class="section-toolbar">
+                    <label style="display: flex; align-items: center; gap: 0.5rem;">
+                        <input type="checkbox" id="selectAllCleanings" style="width: 20px; height: 20px; cursor: pointer;">
+                        <span>Seleziona tutto</span>
+                    </label>
+                    <button id="deleteSelectedCleanings" class="btn btn-danger" style="display: none;">🗑️ Elimina selezionate</button>
                     <input type="text" id="cleaningSearch" class="form-control" placeholder="Cerca pulizie...">
                     <select id="cleaningStatusFilter" class="form-control">
                         <option value="all">Tutti gli Stati</option>
@@ -351,7 +356,6 @@
             <!-- Maintenance Section -->
             <div id="maintenanceSection" class="content-section">
                 <div class="section-header">
-                    <h1>🔧 Manutenzione</h1>
                     <button class="btn btn-primary" id="addMaintenanceBtn">+ Aggiungi Intervento</button>
                 </div>
 

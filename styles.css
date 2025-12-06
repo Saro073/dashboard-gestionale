@@ -223,10 +223,16 @@ a:hover {
 }
 
 .btn-icon {
-  background: transparent;
+  background: var(--bg-primary);
   border: 1px solid var(--border-color);
   color: var(--text-primary);
   cursor: pointer;
+  padding: 0.5rem;
+  font-size: 1.2rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: var(--radius-md);
   transition: all 0.2s;
 }
@@ -234,6 +240,7 @@ a:hover {
 .btn-icon:hover {
   background-color: var(--bg-secondary);
   border-color: var(--primary-color);
+  color: var(--primary-color);
 }
 
 .header-actions {
@@ -779,7 +786,6 @@ textarea {
 .item-actions {
   display: flex;
   gap: 0.5rem;
-  margin-top: 1rem;
 }
 
 /* Task Item */
