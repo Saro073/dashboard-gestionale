@@ -111,6 +111,9 @@ const CalendarComponent = {
 
     // Giorni del mese
     const today = new Date();
+    const currentUser = AuthManager.getCurrentUser();
+    const isAdmin = currentUser && currentUser.role === 'admin';
+    
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const bookings = BookingsModule.getByDate(dateStr);
@@ -120,6 +123,12 @@ const CalendarComponent = {
       
       const classes = ['calendar-day'];
       if (isToday) classes.push('today');
+      
+      // Date passate - disabilita se non admin
+      const isPast = this.isPastDate(dateStr);
+      if (isPast && !isAdmin) {
+        classes.push('past-date-disabled');
+      }
       
       // Selection state classes
       if (this.selectedCheckIn && dateStr === this.selectedCheckIn) {
@@ -303,6 +312,12 @@ const CalendarComponent = {
    * Handler click su data - Airbnb-style 2-step selection
    */
   onDateClick(date) {
+    // Controllo permessi per date passate
+    if (!this.canSelectPastDate(date)) {
+      NotificationService.error('Solo gli amministratori possono operare su date passate');
+      return;
+    }
+    
     const bookings = BookingsModule.getByDate(date);
     
     // Se la data ha già una prenotazione, mostra dettagli (non interferisce con selezione)
@@ -420,6 +435,38 @@ const CalendarComponent = {
     this.selectedCheckIn = null;
     this.selectedCheckOut = null;
     this.selectionState = 'IDLE';
+  },
+  
+  /**
+   * Verifica se l'utente può selezionare date passate
+   * Solo admin può operare su date passate
+   */
+  canSelectPastDate(dateStr) {
+    const selectedDate = new Date(dateStr);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    selectedDate.setHours(0, 0, 0, 0);
+    
+    // Se la data è futura o oggi, tutti possono selezionarla
+    if (selectedDate >= today) {
+      return true;
+    }
+    
+    // Se la data è passata, solo admin può selezionarla
+    const currentUser = AuthManager.getCurrentUser();
+    return currentUser && currentUser.role === 'admin';
+  },
+  
+  /**
+   * Verifica se una data è passata
+   */
+  isPastDate(dateStr) {
+    const date = new Date(dateStr);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    date.setHours(0, 0, 0, 0);
+    
+    return date < today;
   },
   
   /**
