@@ -30,6 +30,11 @@ class DashboardApp {
       ContactsModule.migrateOldContacts();
     }
     
+    // Migra vecchie prenotazioni (guestName → firstName/lastName + link contatti)
+    if (BookingsModule && typeof BookingsModule.migrateOldBookings === 'function') {
+      BookingsModule.migrateOldBookings();
+    }
+    
     // Migra categorie dai contatti esistenti
     if (CategoryManager && typeof CategoryManager.migrateFromContacts === 'function') {
       CategoryManager.migrateFromContacts();

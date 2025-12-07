@@ -1071,18 +1071,89 @@
                 <button class="modal-close" onclick="document.getElementById('bookingModal').classList.remove('active')">&times;</button>
             </div>
             <form id="bookingForm">
+                <!-- Autocomplete Cliente Esistente -->
                 <div class="form-group">
-                    <label for="bookingGuestName">Nome Ospite *</label>
-                    <input type="text" id="bookingGuestName" required minlength="2">
+                    <label for="bookingSearchContact">🔍 Cerca Cliente Esistente (opzionale)</label>
+                    <input type="text" id="bookingSearchContact" placeholder="Digita nome, email o telefono..." autocomplete="off">
+                    <div id="bookingContactSuggestions" class="autocomplete-suggestions" style="display:none;"></div>
+                    <small class="form-hint">Se trovi il cliente, i dati verranno pre-compilati automaticamente</small>
                 </div>
-                <div class="form-group">
-                    <label for="bookingGuestEmail">Email Ospite</label>
-                    <input type="email" id="bookingGuestEmail">
+                
+                <hr style="margin: 1rem 0; border: 1px solid var(--border-color);">
+                
+                <!-- Dati Ospite -->
+                <h3 style="margin-bottom: 1rem;">Dati Ospite</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="bookingGuestFirstName">Nome *</label>
+                        <input type="text" id="bookingGuestFirstName" required minlength="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="bookingGuestLastName">Cognome</label>
+                        <input type="text" id="bookingGuestLastName">
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="bookingGuestPhone">Telefono Ospite</label>
-                    <input type="tel" id="bookingGuestPhone">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="bookingGuestEmail">Email</label>
+                        <input type="email" id="bookingGuestEmail">
+                    </div>
+                    <div class="form-group">
+                        <label for="bookingGuestPhone">Telefono</label>
+                        <input type="tel" id="bookingGuestPhone">
+                    </div>
                 </div>
+                
+                <!-- Indirizzo Privato -->
+                <details style="margin-bottom: 1rem;">
+                    <summary style="cursor: pointer; font-weight: 600; margin-bottom: 0.5rem;">📍 Indirizzo Privato (opzionale)</summary>
+                    <div class="form-group">
+                        <label for="bookingPrivateStreet">Via</label>
+                        <input type="text" id="bookingPrivateStreet">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="bookingPrivateZip">CAP</label>
+                            <input type="text" id="bookingPrivateZip">
+                        </div>
+                        <div class="form-group">
+                            <label for="bookingPrivateCity">Città</label>
+                            <input type="text" id="bookingPrivateCity">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="bookingPrivateCountry">Paese</label>
+                        <input type="text" id="bookingPrivateCountry" value="Italia">
+                    </div>
+                </details>
+                
+                <!-- Indirizzo Aziendale -->
+                <details style="margin-bottom: 1rem;">
+                    <summary style="cursor: pointer; font-weight: 600; margin-bottom: 0.5rem;">🏢 Indirizzo Aziendale (opzionale)</summary>
+                    <div class="form-group">
+                        <label for="bookingBusinessStreet">Via</label>
+                        <input type="text" id="bookingBusinessStreet">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="bookingBusinessZip">CAP</label>
+                            <input type="text" id="bookingBusinessZip">
+                        </div>
+                        <div class="form-group">
+                            <label for="bookingBusinessCity">Città</label>
+                            <input type="text" id="bookingBusinessCity">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="bookingBusinessCountry">Paese</label>
+                        <input type="text" id="bookingBusinessCountry" value="Italia">
+                    </div>
+                </details>
+                
+                <hr style="margin: 1rem 0; border: 1px solid var(--border-color);">
+                
+                <!-- Dati Prenotazione -->
+                <h3 style="margin-bottom: 1rem;">Dati Prenotazione</h3>
                 <div class="form-row">
                     <div class="form-group">
                         <label for="bookingCheckIn">Check-in *</label>

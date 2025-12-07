@@ -6,6 +6,8 @@
 
 const BookingsHandlers = {
   
+  selectedContactId: null, // Track selected contact from autocomplete
+  
   /**
    * Inizializza tutti i listener per bookings
    */
@@ -64,6 +66,109 @@ const BookingsHandlers = {
     // EventBus listeners per click calendario
     EventBus.on('CALENDAR_DATE_SELECTED', (data) => this.onCalendarDateSelected(data));
     EventBus.on('CALENDAR_BOOKING_SELECTED', (data) => this.onCalendarBookingSelected(data));
+    
+    // Autocomplete contatti
+    this.setupContactAutocomplete();
+  },
+  
+  /**
+   * Setup autocomplete per ricerca contatti esistenti
+   */
+  setupContactAutocomplete() {
+    const searchInput = document.getElementById('bookingSearchContact');
+    const suggestionsDiv = document.getElementById('bookingContactSuggestions');
+    
+    if (!searchInput || !suggestionsDiv) return;
+    
+    searchInput.addEventListener('input', Utils.debounce(() => {
+      const term = searchInput.value.trim().toLowerCase();
+      
+      if (term.length < 2) {
+        suggestionsDiv.style.display = 'none';
+        return;
+      }
+      
+      if (typeof ContactsModule === 'undefined') {
+        suggestionsDiv.style.display = 'none';
+        return;
+      }
+      
+      const contacts = ContactsModule.getAll();
+      const matches = contacts.filter(c => {
+        const fullName = `${c.firstName} ${c.lastName}`.toLowerCase();
+        const email = c.emails?.[0]?.value?.toLowerCase() || '';
+        const phone = c.phones?.[0]?.value || '';
+        return fullName.includes(term) || email.includes(term) || phone.includes(term);
+      }).slice(0, 5);
+      
+      if (matches.length === 0) {
+        suggestionsDiv.style.display = 'none';
+        return;
+      }
+      
+      suggestionsDiv.innerHTML = matches.map(c => `
+        <div class=\"autocomplete-item\" data-contact-id=\"${c.id}\">
+          <strong>${Utils.escapeHtml(c.firstName)} ${Utils.escapeHtml(c.lastName)}</strong>
+          <small>
+            ${c.emails?.[0]?.value ? `📧 ${Utils.escapeHtml(c.emails[0].value)}` : ''}
+            ${c.phones?.[0]?.value ? ` • 📞 ${Utils.escapeHtml(c.phones[0].value)}` : ''}
+          </small>
+        </div>
+      `).join('');
+      
+      suggestionsDiv.style.display = 'block';
+      
+      // Click su suggestion
+      suggestionsDiv.querySelectorAll('.autocomplete-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const contactId = parseInt(item.dataset.contactId);
+          this.fillFormFromContact(contactId);
+          searchInput.value = '';
+          suggestionsDiv.style.display = 'none';
+        });
+      });
+    }, 300));
+    
+    // Hide suggestions on outside click
+    document.addEventListener('click', (e) => {
+      if (!searchInput.contains(e.target) && !suggestionsDiv.contains(e.target)) {
+        suggestionsDiv.style.display = 'none';
+      }
+    });
+  },
+  
+  /**
+   * Pre-compila form con dati da contatto selezionato
+   */
+  fillFormFromContact(contactId) {
+    const contact = ContactsModule.getById(contactId);
+    if (!contact) return;
+    
+    this.selectedContactId = contactId;
+    
+    // Dati base
+    document.getElementById('bookingGuestFirstName').value = contact.firstName || '';
+    document.getElementById('bookingGuestLastName').value = contact.lastName || '';
+    document.getElementById('bookingGuestEmail').value = contact.emails?.[0]?.value || '';
+    document.getElementById('bookingGuestPhone').value = contact.phones?.[0]?.value || '';
+    
+    // Indirizzo privato
+    if (contact.address) {
+      document.getElementById('bookingPrivateStreet').value = contact.address.street || '';
+      document.getElementById('bookingPrivateZip').value = contact.address.zip || '';
+      document.getElementById('bookingPrivateCity').value = contact.address.city || '';
+      document.getElementById('bookingPrivateCountry').value = contact.address.country || 'Italia';
+    }
+    
+    // Indirizzo aziendale
+    if (contact.businessAddress) {
+      document.getElementById('bookingBusinessStreet').value = contact.businessAddress.street || '';
+      document.getElementById('bookingBusinessZip').value = contact.businessAddress.zip || '';
+      document.getElementById('bookingBusinessCity').value = contact.businessAddress.city || '';
+      document.getElementById('bookingBusinessCountry').value = contact.businessAddress.country || 'Italia';
+    }
+    
+    NotificationService.success(`Cliente "${contact.firstName} ${contact.lastName}" selezionato`);
   },
 
   /**
@@ -117,29 +222,35 @@ const BookingsHandlers = {
     
     filtered.sort((a, b) => new Date(a.checkIn) - new Date(b.checkIn));
 
-    container.innerHTML = filtered.map(booking => `
-      <div class="booking-item">
-        <div class="booking-content">
-          <h4>${Utils.escapeHtml(booking.guestName)}</h4>
-          ${booking.guestEmail ? `<p>📧 ${Utils.escapeHtml(booking.guestEmail)}</p>` : ''}
-          ${booking.guestPhone ? `<p>📞 ${Utils.escapeHtml(booking.guestPhone)}</p>` : ''}
-          <div class="booking-dates">
-            <span>📅 ${Utils.formatDate(booking.checkIn)} - ${Utils.formatDate(booking.checkOut)}</span>
-            <span>👥 ${booking.guests} ${booking.guests === 1 ? 'ospite' : 'ospiti'}</span>
+    container.innerHTML = filtered.map(booking => {
+      const guestInfo = BookingsModule.getGuestInfo(booking);
+      return `
+        <div class="booking-item">
+          <div class="booking-content">
+            <h4>
+              ${Utils.escapeHtml(guestInfo.fullName)}
+              ${booking.contactId ? '<span title="Collegato a contatto">🔗</span>' : ''}
+            </h4>
+            ${guestInfo.email ? `<p>📧 ${Utils.escapeHtml(guestInfo.email)}</p>` : ''}
+            ${guestInfo.phone ? `<p>📞 ${Utils.escapeHtml(guestInfo.phone)}</p>` : ''}
+            <div class="booking-dates">
+              <span>📅 ${Utils.formatDate(booking.checkIn)} - ${Utils.formatDate(booking.checkOut)}</span>
+              <span>👥 ${booking.guests} ${booking.guests === 1 ? 'ospite' : 'ospiti'}</span>
+            </div>
+            <div class="item-meta">
+              <span class="item-badge badge-${booking.status}">${this.getStatusLabel(booking.status)}</span>
+              <span class="item-badge badge-${booking.channel}">${this.getChannelLabel(booking.channel)}</span>
+              ${booking.isPaid ? '<span class="item-badge" style="background: #d1fae5; color: #065f46;">✓ Pagato</span>' : ''}
+            </div>
           </div>
-          <div class="item-meta">
-            <span class="item-badge badge-${booking.status}">${this.getStatusLabel(booking.status)}</span>
-            <span class="item-badge badge-${booking.channel}">${this.getChannelLabel(booking.channel)}</span>
-            ${booking.isPaid ? '<span class="item-badge" style="background: #d1fae5; color: #065f46;">✓ Pagato</span>' : ''}
+          <div class="booking-amount">€${booking.totalAmount.toFixed(2)}</div>
+          <div class="item-actions">
+            <button class="btn btn-sm btn-secondary" onclick="BookingsHandlers.editBooking(${booking.id})">Modifica</button>
+            <button class="btn btn-sm btn-danger" onclick="BookingsHandlers.deleteBooking(${booking.id})">Elimina</button>
           </div>
         </div>
-        <div class="booking-amount">€${booking.totalAmount.toFixed(2)}</div>
-        <div class="item-actions">
-          <button class="btn btn-sm btn-secondary" onclick="BookingsHandlers.editBooking(${booking.id})">Modifica</button>
-          <button class="btn btn-sm btn-danger" onclick="BookingsHandlers.deleteBooking(${booking.id})">Elimina</button>
-        </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
   },
 
   /**
@@ -195,10 +306,34 @@ const BookingsHandlers = {
     const booking = BookingsModule.getById(id);
     if (!booking) return;
     
+    // Ottieni dati ospite (da contatto o snapshot)
+    const guestInfo = BookingsModule.getGuestInfo(booking);
+    
     document.getElementById('bookingModalTitle').textContent = 'Modifica Prenotazione';
-    document.getElementById('bookingGuestName').value = booking.guestName;
-    document.getElementById('bookingGuestEmail').value = booking.guestEmail || '';
-    document.getElementById('bookingGuestPhone').value = booking.guestPhone || '';
+    
+    // Campi nome/cognome
+    document.getElementById('bookingGuestFirstName').value = guestInfo.firstName;
+    document.getElementById('bookingGuestLastName').value = guestInfo.lastName;
+    document.getElementById('bookingGuestEmail').value = guestInfo.email || '';
+    document.getElementById('bookingGuestPhone').value = guestInfo.phone || '';
+    
+    // Indirizzo privato
+    if (guestInfo.privateAddress) {
+      document.getElementById('bookingPrivateStreet').value = guestInfo.privateAddress.street || '';
+      document.getElementById('bookingPrivateZip').value = guestInfo.privateAddress.zip || '';
+      document.getElementById('bookingPrivateCity').value = guestInfo.privateAddress.city || '';
+      document.getElementById('bookingPrivateCountry').value = guestInfo.privateAddress.country || 'Italia';
+    }
+    
+    // Indirizzo aziendale
+    if (guestInfo.businessAddress) {
+      document.getElementById('bookingBusinessStreet').value = guestInfo.businessAddress.street || '';
+      document.getElementById('bookingBusinessZip').value = guestInfo.businessAddress.zip || '';
+      document.getElementById('bookingBusinessCity').value = guestInfo.businessAddress.city || '';
+      document.getElementById('bookingBusinessCountry').value = guestInfo.businessAddress.country || 'Italia';
+    }
+    
+    // Altri campi prenotazione
     document.getElementById('bookingCheckIn').value = booking.checkIn;
     document.getElementById('bookingCheckOut').value = booking.checkOut;
     document.getElementById('bookingGuests').value = booking.guests;
@@ -209,6 +344,9 @@ const BookingsHandlers = {
     document.getElementById('bookingIsPaid').checked = booking.isPaid;
     document.getElementById('bookingNotes').value = booking.notes || '';
     
+    // Salva contactId originale
+    this.selectedContactId = booking.contactId || null;
+    
     const modal = document.getElementById('bookingModal');
     modal.classList.add('active');
     
@@ -216,10 +354,36 @@ const BookingsHandlers = {
     const form = document.getElementById('bookingForm');
     form.onsubmit = (e) => {
       e.preventDefault();
+      
+      // Raccogli dati aggiornati
+      const firstName = document.getElementById('bookingGuestFirstName').value.trim();
+      const lastName = document.getElementById('bookingGuestLastName').value.trim();
+      const email = document.getElementById('bookingGuestEmail').value.trim();
+      const phone = document.getElementById('bookingGuestPhone').value.trim();
+      
+      const privateAddress = {
+        street: document.getElementById('bookingPrivateStreet')?.value.trim() || '',
+        zip: document.getElementById('bookingPrivateZip')?.value.trim() || '',
+        city: document.getElementById('bookingPrivateCity')?.value.trim() || '',
+        country: document.getElementById('bookingPrivateCountry')?.value.trim() || 'Italia'
+      };
+      
+      const businessStreet = document.getElementById('bookingBusinessStreet')?.value.trim() || '';
+      const businessAddress = businessStreet ? {
+        street: businessStreet,
+        zip: document.getElementById('bookingBusinessZip')?.value.trim() || '',
+        city: document.getElementById('bookingBusinessCity')?.value.trim() || '',
+        country: document.getElementById('bookingBusinessCountry')?.value.trim() || 'Italia'
+      } : null;
+      
       const updates = {
-        guestName: document.getElementById('bookingGuestName').value,
-        guestEmail: document.getElementById('bookingGuestEmail').value,
-        guestPhone: document.getElementById('bookingGuestPhone').value,
+        contactId: this.selectedContactId,
+        guestFirstName: firstName,
+        guestLastName: lastName,
+        guestEmail: email,
+        guestPhone: phone,
+        guestPrivateAddress: privateAddress,
+        guestBusinessAddress: businessAddress,
         checkIn: document.getElementById('bookingCheckIn').value,
         checkOut: document.getElementById('bookingCheckOut').value,
         guests: parseInt(document.getElementById('bookingGuests').value),
@@ -236,6 +400,7 @@ const BookingsHandlers = {
         document.getElementById('bookingModal').classList.remove('active');
         document.getElementById('bookingForm').reset();
         form.onsubmit = null;
+        this.selectedContactId = null;
         this.renderBookings();
         CalendarComponent.render();
         
@@ -260,10 +425,52 @@ const BookingsHandlers = {
    * Salva nuova prenotazione
    */
   saveBooking() {
+    // Raccogli dati base
+    const firstName = document.getElementById('bookingGuestFirstName').value.trim();
+    const lastName = document.getElementById('bookingGuestLastName').value.trim();
+    const email = document.getElementById('bookingGuestEmail').value.trim();
+    const phone = document.getElementById('bookingGuestPhone').value.trim();
+    
+    // Raccogli indirizzo privato
+    const privateAddress = {
+      street: document.getElementById('bookingPrivateStreet')?.value.trim() || '',
+      zip: document.getElementById('bookingPrivateZip')?.value.trim() || '',
+      city: document.getElementById('bookingPrivateCity')?.value.trim() || '',
+      country: document.getElementById('bookingPrivateCountry')?.value.trim() || 'Italia'
+    };
+    
+    // Raccogli indirizzo aziendale (opzionale)
+    const businessStreet = document.getElementById('bookingBusinessStreet')?.value.trim() || '';
+    const businessAddress = businessStreet ? {
+      street: businessStreet,
+      zip: document.getElementById('bookingBusinessZip')?.value.trim() || '',
+      city: document.getElementById('bookingBusinessCity')?.value.trim() || '',
+      country: document.getElementById('bookingBusinessCountry')?.value.trim() || 'Italia'
+    } : null;
+    
+    // Prepara dati ospite per getOrCreateContact()
+    const guestData = {
+      firstName,
+      lastName,
+      email,
+      phone,
+      privateAddress,
+      businessAddress
+    };
+    
+    // Ottieni o crea contatto
+    const contactResult = BookingsModule.getOrCreateContact(guestData);
+    const contactId = contactResult.success ? contactResult.contactId : this.selectedContactId;
+    
+    // Costruisci booking data con nuovo modello
     const data = {
-      guestName: document.getElementById('bookingGuestName').value,
-      guestEmail: document.getElementById('bookingGuestEmail').value,
-      guestPhone: document.getElementById('bookingGuestPhone').value,
+      contactId,
+      guestFirstName: firstName,
+      guestLastName: lastName,
+      guestEmail: email,
+      guestPhone: phone,
+      guestPrivateAddress: privateAddress,
+      guestBusinessAddress: businessAddress,
       checkIn: document.getElementById('bookingCheckIn').value,
       checkOut: document.getElementById('bookingCheckOut').value,
       guests: parseInt(document.getElementById('bookingGuests').value),
@@ -279,6 +486,7 @@ const BookingsHandlers = {
     if (result.success) {
       document.getElementById('bookingModal').classList.remove('active');
       document.getElementById('bookingForm').reset();
+      this.selectedContactId = null;
       this.renderBookings();
       CalendarComponent.render();
     }

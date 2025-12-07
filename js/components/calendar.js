@@ -140,12 +140,13 @@ const CalendarComponent = {
     
     const booking = bookings[0];
     const isBlocked = booking.status === 'blocked';
+    const guestInfo = BookingsModule.getGuestInfo(booking);
     
     return `
       <div class="day-booking ${isBlocked ? 'blocked' : ''}" 
            data-booking-id="${booking.id}"
-           title="${Utils.escapeHtml(booking.guestName)}">
-        ${isBlocked ? '🔒' : Utils.escapeHtml(booking.guestName.substring(0, 8))}
+           title="${Utils.escapeHtml(guestInfo.fullName)}">
+        ${isBlocked ? '🔒' : Utils.escapeHtml(guestInfo.fullName.substring(0, 8))}
       </div>
     `;
   },
@@ -177,11 +178,12 @@ const CalendarComponent = {
         classes.push(`status-${bookings[0].status}`);
       }
 
+      const guestName = bookings.length > 0 ? BookingsModule.getGuestInfo(bookings[0]).fullName : '';
       html += `
         <div class="${classes.join(' ')}" data-date="${dateStr}">
           <span class="day-name">${dayNames[dayOfWeek]}</span>
           <span class="day-num">${day}</span>
-          ${bookings.length > 0 ? `<span class="booking-indicator" title="${Utils.escapeHtml(bookings[0].guestName)}"></span>` : ''}
+          ${bookings.length > 0 ? `<span class="booking-indicator" title="${Utils.escapeHtml(guestName)}"></span>` : ''}
         </div>
       `;
     }

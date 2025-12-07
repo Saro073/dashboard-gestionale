@@ -68,9 +68,27 @@ const BookingsModule = {
 
     const booking = {
       id: Utils.generateId(),
-      guestName: data.guestName.trim(),
+      
+      // Link a contatto (opzionale)
+      contactId: data.contactId || null,
+      
+      // Snapshot dati ospite (fallback se contatto eliminato)
+      guestFirstName: data.guestFirstName?.trim() || '',
+      guestLastName: data.guestLastName?.trim() || '',
       guestEmail: data.guestEmail?.trim() || '',
       guestPhone: data.guestPhone?.trim() || '',
+      guestPrivateAddress: data.guestPrivateAddress || {
+        street: '',
+        zip: '',
+        city: '',
+        country: ''
+      },
+      guestBusinessAddress: data.guestBusinessAddress || null,
+      
+      // Retrocompatibilità (deprecato)
+      guestName: data.guestName?.trim() || `${data.guestFirstName || ''} ${data.guestLastName || ''}`.trim(),
+      
+      // Dati prenotazione
       checkIn: data.checkIn,
       checkOut: data.checkOut,
       guests: parseInt(data.guests) || 1,
@@ -80,6 +98,8 @@ const BookingsModule = {
       channel: data.channel || this.CHANNELS.DIRECT,
       status: data.status || this.STATUS.CONFIRMED,
       notes: data.notes?.trim() || '',
+      
+      // Metadata
       createdBy: currentUser.id,
       createdByUsername: currentUser.username,
       createdAt: new Date().toISOString(),
@@ -163,12 +183,13 @@ const BookingsModule = {
     
     // Se isPaid passa da false a true, crea transazione
     if (!oldBooking.isPaid && bookings[index].isPaid && bookings[index].totalAmount > 0) {
+      const guestInfo = this.getGuestInfo(bookings[index]);
       const transactionData = {
         type: 'income',
         category: 'booking',
         amount: bookings[index].totalAmount,
         date: bookings[index].checkIn,
-        description: `Prenotazione: ${bookings[index].guestName}`,
+        description: `Prenotazione: ${guestInfo.fullName}`,
         paymentMethod: 'bank_transfer',
         bookingId: bookings[index].id,
         notes: `Check-in: ${bookings[index].checkIn}, Check-out: ${bookings[index].checkOut}`
@@ -200,12 +221,13 @@ const BookingsModule = {
     const filtered = bookings.filter(b => b.id !== id);
     StorageManager.save(CONFIG.STORAGE_KEYS.BOOKINGS, filtered);
 
+    const guestInfo = this.getGuestInfo(booking);
     ActivityLog.log(CONFIG.ACTION_TYPES.DELETE, 'booking', id, {
-      guestName: booking.guestName
+      guestName: guestInfo.fullName
     });
 
-    EventBus.emit(EVENTS.BOOKING_DELETED, { id, guestName: booking.guestName });
-    NotificationService.success(`Prenotazione di "${booking.guestName}" eliminata`);
+    EventBus.emit(EVENTS.BOOKING_DELETED, { id, guestName: guestInfo.fullName });
+    NotificationService.success(`Prenotazione di "${guestInfo.fullName}" eliminata`);
 
     return { success: true, message: 'Prenotazione eliminata' };
   },
@@ -434,13 +456,96 @@ const BookingsModule = {
   },
 
   /**
+   * Ottiene informazioni ospite (da contact linkato o snapshot)
+   * @param {object} booking
+   * @returns {object}
+   */
+  getGuestInfo(booking) {
+    // Prova a recuperare da contact linkato
+    if (booking.contactId && typeof ContactsModule !== 'undefined') {
+      const contact = ContactsModule.getById(booking.contactId);
+      if (contact) {
+        return {
+          firstName: contact.firstName || '',
+          lastName: contact.lastName || '',
+          email: contact.emails?.[0]?.value || '',
+          phone: contact.phones?.[0]?.value || '',
+          privateAddress: contact.address || null,
+          businessAddress: contact.businessAddress || null,
+          fullName: `${contact.firstName} ${contact.lastName}`.trim()
+        };
+      }
+    }
+    
+    // Fallback a snapshot
+    return {
+      firstName: booking.guestFirstName || '',
+      lastName: booking.guestLastName || '',
+      email: booking.guestEmail || '',
+      phone: booking.guestPhone || '',
+      privateAddress: booking.guestPrivateAddress || null,
+      businessAddress: booking.guestBusinessAddress || null,
+      fullName: booking.guestName || `${booking.guestFirstName} ${booking.guestLastName}`.trim()
+    };
+  },
+
+  /**
+   * Cerca o crea contatto per ospite prenotazione
+   * @param {object} guestData - {firstName, lastName, email, phone, privateAddress, businessAddress}
+   * @returns {number|null} - contactId o null
+   */
+  getOrCreateContact(guestData) {
+    if (typeof ContactsModule === 'undefined') return null;
+    
+    const { firstName, lastName, email, phone, privateAddress, businessAddress } = guestData;
+    
+    // Cerca contatto esistente by email (priorità) o phone
+    let existingContact = null;
+    if (email) {
+      const contacts = ContactsModule.getAll();
+      existingContact = contacts.find(c => 
+        c.emails?.some(e => e.value.toLowerCase() === email.toLowerCase())
+      );
+    }
+    if (!existingContact && phone) {
+      const contacts = ContactsModule.getAll();
+      existingContact = contacts.find(c => 
+        c.phones?.some(p => p.value.replace(/\s/g, '') === phone.replace(/\s/g, ''))
+      );
+    }
+    
+    if (existingContact) {
+      return existingContact.id;
+    }
+    
+    // Crea nuovo contatto
+    const newContactData = {
+      firstName: firstName || '',
+      lastName: lastName || '',
+      emails: email ? [{ value: email, label: 'Principale' }] : [],
+      phones: phone ? [{ value: phone, label: 'Principale' }] : [],
+      address: privateAddress || { street: '', city: '', zip: '', province: '', country: '' },
+      businessAddress: businessAddress || null,
+      category: 'cliente',
+      notes: 'Creato automaticamente da prenotazione'
+    };
+    
+    const result = ContactsModule.create(newContactData);
+    return result.success ? result.contact.id : null;
+  },
+
+  /**
    * Valida dati prenotazione
    * @param {object} data
    * @returns {object}
    */
   validateBooking(data) {
-    if (!data.guestName || data.guestName.trim().length < 2) {
-      return { valid: false, message: 'Nome ospite richiesto (min 2 caratteri)' };
+    // Supporta sia vecchio formato (guestName) che nuovo (firstName/lastName)
+    const hasOldFormat = data.guestName && data.guestName.trim().length >= 2;
+    const hasNewFormat = (data.guestFirstName?.trim().length >= 1) || (data.guestLastName?.trim().length >= 1);
+    
+    if (!hasOldFormat && !hasNewFormat) {
+      return { valid: false, message: 'Nome o cognome ospite richiesto' };
     }
 
     if (!data.checkIn || !data.checkOut) {
@@ -459,6 +564,62 @@ const BookingsModule = {
     }
 
     return { valid: true, message: 'OK' };
+  },
+  
+  /**
+   * Migra vecchie prenotazioni da guestName a firstName/lastName
+   * Tenta di collegare a contatti esistenti tramite email
+   */
+  migrateOldBookings() {
+    const bookings = this.getAll();
+    let migrated = 0;
+    let linked = 0;
+    
+    bookings.forEach(booking => {
+      // Skip se già migrata (ha firstName/lastName)
+      if (booking.guestFirstName && booking.guestLastName) return;
+      
+      // Split guestName in firstName/lastName
+      if (booking.guestName) {
+        const parts = booking.guestName.trim().split(/\s+/);
+        const firstName = parts[0] || '';
+        const lastName = parts.slice(1).join(' ') || '';
+        
+        booking.guestFirstName = firstName;
+        booking.guestLastName = lastName;
+        
+        // Mantieni guestName per backward compatibility
+        // (validateBooking già lo gestisce)
+        
+        // Preserva dati snapshot esistenti
+        if (!booking.guestEmail) booking.guestEmail = '';
+        if (!booking.guestPhone) booking.guestPhone = '';
+        
+        migrated++;
+        
+        // Tenta di collegare a contatto esistente tramite email
+        if (booking.guestEmail && typeof ContactsModule !== 'undefined') {
+          const contacts = ContactsModule.getAll();
+          const match = contacts.find(c => 
+            c.emails && c.emails.some(e => 
+              e.value.toLowerCase() === booking.guestEmail.toLowerCase()
+            )
+          );
+          
+          if (match) {
+            booking.contactId = match.id;
+            linked++;
+          }
+        }
+      }
+    });
+    
+    if (migrated > 0) {
+      StorageManager.save(CONFIG.STORAGE_KEYS.BOOKINGS, bookings);
+      console.log(`[BookingsModule] Migrated ${migrated} bookings, linked ${linked} to contacts`);
+    }
+    
+    return { migrated, linked };
   }
 };
 
