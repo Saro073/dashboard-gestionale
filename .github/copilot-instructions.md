@@ -175,7 +175,32 @@ Contacts have **arrays** for emails/phones (migrated from single values):
 }
 ```
 
-### 7. Router & Navigation
+### 7. Booking-Contact Integration (Hybrid Linking)
+Bookings link to contacts via **hybrid approach** (contactId + snapshot data):
+
+```javascript
+{
+  id: 456,
+  contactId: 123,  // Link to ContactsModule (optional)
+  guestFirstName: 'Mario',
+  guestLastName: 'Rossi',
+  guestEmail: 'mario@email.com',
+  guestPhone: '+39 123 456789',
+  guestPrivateAddress: { street, city, zip, country },
+  guestBusinessAddress: { street, city, zip, country },  // Optional
+  checkIn: '2025-01-15',
+  checkOut: '2025-01-18',
+  // ... other booking fields
+}
+```
+
+**Always use helpers**:
+- `BookingsModule.getGuestInfo(booking)` - retrieves from contact or falls back to snapshot
+- `BookingsModule.getOrCreateContact(guestData)` - searches existing or creates new contact
+
+**Why hybrid**: Smooth UX (autocomplete), automatic contact creation, data preservation if contact deleted, unified customer registry.
+
+### 8. Router & Navigation
 Navigate programmatically with `Router.navigate()`:
 
 ```javascript
@@ -184,7 +209,7 @@ Router.navigate('contacts');  // Updates URL hash and shows section
 
 In `index.html`, sections have `id="contactsSection"` and class `content-section`. Only one visible at a time.
 
-### 8. Accounting & CSV Export
+### 9. Accounting & CSV Export
 Accounting module exports CSV for accountant (commercialista):
 
 ```javascript
@@ -195,7 +220,7 @@ AccountingModule.exportSummary(2025);   // Text summary
 
 Format: `Data | Tipo | Categoria | Descrizione | Importo | Metodo | N° Ricevuta | Note | Creatore`
 
-### 9. Backup & Restore
+### 10. Backup & Restore
 Full data backup/restore in `js/modules/backup.js`:
 
 ```javascript
