@@ -426,15 +426,13 @@ const CalendarComponent = {
    * Render summary selezione (notti + pulsante)
    */
   renderSelectionSummary() {
-    if (this.selectionState === 'IDLE') return '';
+    if (this.selectionState !== 'SELECTED') return '';
     
     const nights = this.calculateNights();
     const checkInFormatted = this.selectedCheckIn ? 
       Utils.formatDate(this.selectedCheckIn) : '-';
     const checkOutFormatted = this.selectedCheckOut ? 
       Utils.formatDate(this.selectedCheckOut) : '-';
-    
-    const isComplete = this.selectionState === 'SELECTED';
     
     return `
       <div class="calendar-selection-summary">
@@ -446,28 +444,22 @@ const CalendarComponent = {
             <span class="selection-label">Check-out:</span>
             <strong>${checkOutFormatted}</strong>
           </div>
-          ${isComplete ? `
-            <div class="selection-nights">
-              <span class="nights-badge">${nights} ${nights === 1 ? 'notte' : 'notti'}</span>
-            </div>
-          ` : `
-            <div class="selection-hint">
-              ${this.selectionState === 'SELECTING_CHECKOUT' ? 
-                'Seleziona la data di check-out' : ''}
-            </div>
-          `}
+          <div class="selection-nights">
+            <span class="nights-badge">${nights} ${nights === 1 ? 'notte' : 'notti'}</span>
+          </div>
+          <div class="selection-hint">
+            Click per scegliere l'azione
+          </div>
         </div>
         <div class="selection-actions">
           <button class="btn btn-secondary btn-sm" 
                   onclick="CalendarComponent.resetSelection(); CalendarComponent.render()">
             Annulla
           </button>
-          ${isComplete ? `
-            <button class="btn btn-primary btn-sm" 
-                    onclick="CalendarComponent.proceedToBooking()">
-              Crea Prenotazione
-            </button>
-          ` : ''}
+          <button class="btn btn-primary btn-sm" 
+                  onclick="CalendarComponent.showActionMenu()">
+            Scegli Azione
+          </button>
         </div>
       </div>
     `;
@@ -486,6 +478,124 @@ const CalendarComponent = {
     });
     
     // Reset selezione dopo apertura modale
+    this.resetSelection();
+    this.render();
+  },
+  
+  /**
+   * Mostra menu azioni contestuale
+   */
+  showActionMenu() {
+    if (this.selectionState !== 'SELECTED') return;
+    
+    const nights = this.calculateNights();
+    
+    // Popola dati nel menu
+    document.getElementById('actionMenuCheckIn').textContent = Utils.formatDate(this.selectedCheckIn);
+    document.getElementById('actionMenuCheckOut').textContent = Utils.formatDate(this.selectedCheckOut);
+    document.getElementById('actionMenuNights').textContent = `${nights} ${nights === 1 ? 'notte' : 'notti'}`;
+    
+    // Verifica se esiste prenotazione nel range selezionato
+    const hasExistingBooking = this.checkExistingBookingInRange();
+    const existingActions = document.getElementById('existingBookingActions');
+    
+    if (hasExistingBooking) {
+      existingActions.style.display = 'block';
+      this.existingBookingInRange = hasExistingBooking;
+    } else {
+      existingActions.style.display = 'none';
+      this.existingBookingInRange = null;
+    }
+    
+    // Mostra modal
+    document.getElementById('calendarActionMenu').classList.add('active');
+  },
+  
+  /**
+   * Chiudi menu azioni
+   */
+  closeActionMenu() {
+    document.getElementById('calendarActionMenu').classList.remove('active');
+  },
+  
+  /**
+   * Verifica se esiste prenotazione nel range
+   */
+  checkExistingBookingInRange() {
+    if (!this.selectedCheckIn || !this.selectedCheckOut) return null;
+    
+    const checkIn = new Date(this.selectedCheckIn);
+    const checkOut = new Date(this.selectedCheckOut);
+    const allBookings = BookingsModule.getAll();
+    
+    for (let booking of allBookings) {
+      const bookingCheckIn = new Date(booking.checkIn);
+      const bookingCheckOut = new Date(booking.checkOut);
+      
+      // Verifica overlap
+      if (bookingCheckIn <= checkOut && bookingCheckOut >= checkIn) {
+        return booking;
+      }
+    }
+    
+    return null;
+  },
+  
+  /**
+   * Azione: Nuova Prenotazione
+   */
+  actionNewBooking() {
+    this.closeActionMenu();
+    
+    EventBus.emit('CALENDAR_DATES_SELECTED', {
+      checkIn: this.selectedCheckIn,
+      checkOut: this.selectedCheckOut,
+      nights: this.calculateNights()
+    });
+    
+    this.resetSelection();
+    this.render();
+  },
+  
+  /**
+   * Azione: Blocca Date
+   */
+  actionBlockDates() {
+    this.closeActionMenu();
+    
+    // Pre-compila form blocco date
+    document.getElementById('blockStartDate').value = this.selectedCheckIn;
+    document.getElementById('blockEndDate').value = this.selectedCheckOut;
+    document.getElementById('blockDatesModal').classList.add('active');
+    
+    this.resetSelection();
+    this.render();
+  },
+  
+  /**
+   * Azione: Modifica Prenotazione Esistente
+   */
+  actionEditBooking() {
+    this.closeActionMenu();
+    
+    if (this.existingBookingInRange) {
+      EventBus.emit('CALENDAR_BOOKING_SELECTED', { booking: this.existingBookingInRange });
+    }
+    
+    this.resetSelection();
+    this.render();
+  },
+  
+  /**
+   * Azione: Elimina Prenotazione Esistente
+   */
+  actionDeleteBooking() {
+    this.closeActionMenu();
+    
+    if (this.existingBookingInRange) {
+      this.deleteBooking(this.existingBookingInRange.id);
+    }
+    
     this.resetSelection();
     this.render();
   }

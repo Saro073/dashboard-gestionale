@@ -1246,6 +1246,61 @@
         </div>
     </div>
 
+    <!-- Calendar Action Menu Modal -->
+    <div id="calendarActionMenu" class="modal calendar-action-modal">
+        <div class="modal-content action-menu-content">
+            <div class="modal-header">
+                <h2>Cosa vuoi fare?</h2>
+                <button class="modal-close" onclick="CalendarComponent.closeActionMenu()">&times;</button>
+            </div>
+            <div class="action-menu-summary">
+                <div class="summary-dates">
+                    <span class="summary-label">Check-in:</span>
+                    <strong id="actionMenuCheckIn">-</strong>
+                    <span class="summary-separator">→</span>
+                    <span class="summary-label">Check-out:</span>
+                    <strong id="actionMenuCheckOut">-</strong>
+                </div>
+                <div class="summary-nights">
+                    <span class="nights-badge" id="actionMenuNights">0 notti</span>
+                </div>
+            </div>
+            <div class="action-menu-buttons">
+                <button class="action-btn action-btn-primary" onclick="CalendarComponent.actionNewBooking()">
+                    <span class="action-icon">📅</span>
+                    <span class="action-text">
+                        <strong>Nuova Prenotazione</strong>
+                        <small>Crea una prenotazione per queste date</small>
+                    </span>
+                </button>
+                <button class="action-btn action-btn-secondary" onclick="CalendarComponent.actionBlockDates()">
+                    <span class="action-icon">🔒</span>
+                    <span class="action-text">
+                        <strong>Blocca Date</strong>
+                        <small>Rendi non disponibili queste date</small>
+                    </span>
+                </button>
+                <div id="existingBookingActions" style="display: none;">
+                    <hr style="margin: 1rem 0; border: none; border-top: 1px solid var(--border-color);">
+                    <button class="action-btn action-btn-edit" onclick="CalendarComponent.actionEditBooking()">
+                        <span class="action-icon">✏️</span>
+                        <span class="action-text">
+                            <strong>Modifica Prenotazione</strong>
+                            <small>Modifica la prenotazione esistente</small>
+                        </span>
+                    </button>
+                    <button class="action-btn action-btn-danger" onclick="CalendarComponent.actionDeleteBooking()">
+                        <span class="action-icon">🗑️</span>
+                        <span class="action-text">
+                            <strong>Elimina Prenotazione</strong>
+                            <small>Rimuovi completamente la prenotazione</small>
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- User Modal (Admin Only) -->
     <div id="userModal" class="modal">
         <div class="modal-content">

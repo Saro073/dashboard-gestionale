@@ -1118,6 +1118,120 @@ textarea {
   overflow: hidden;
 }
 
+/* Calendar Action Menu Modal */
+.calendar-action-modal .action-menu-content {
+  max-width: 480px;
+}
+
+.action-menu-summary {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(59, 130, 246, 0.05));
+  border: 2px solid var(--primary-color);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.summary-dates {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+  flex-wrap: wrap;
+}
+
+.summary-label {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.summary-separator {
+  color: var(--primary-color);
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.summary-nights {
+  display: flex;
+  justify-content: center;
+}
+
+.action-menu-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--surface-color);
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+  width: 100%;
+}
+
+.action-btn:hover {
+  border-color: var(--primary-color);
+  background: rgba(37, 99, 235, 0.05);
+  transform: translateX(4px);
+}
+
+.action-btn-primary:hover {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.action-btn-primary:hover .action-icon {
+  transform: scale(1.2);
+}
+
+.action-btn-secondary:hover {
+  background: var(--secondary-color);
+  color: white;
+  border-color: var(--secondary-color);
+}
+
+.action-btn-edit:hover {
+  background: var(--warning-color);
+  color: white;
+  border-color: var(--warning-color);
+}
+
+.action-btn-danger:hover {
+  background: var(--danger-color);
+  color: white;
+  border-color: var(--danger-color);
+}
+
+.action-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+  transition: transform 0.2s;
+}
+
+.action-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.action-text strong {
+  font-size: 1rem;
+}
+
+.action-text small {
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
 /* Modal body - scrollable content area */
 .modal-body {
   flex: 1;
