@@ -53,13 +53,13 @@ const BookingsHandlers = {
       this.blockDates();
     });
     
-    // Inizializza calendario quando si entra nella sezione
-    Router.onNavigate((section) => {
-      if (section === 'bookings') {
+    // Inizializza calendario quando si entra nella sezione bookings via EventBus
+    EventBus.on(EVENTS.SECTION_CHANGED, (data) => {
+      if (data.section === 'bookings') {
         CalendarComponent.init('bookingsCalendar');
         this.renderBookings();
       }
-        });
+    });
 
     // EventBus listeners per click calendario
     EventBus.on('CALENDAR_DATE_SELECTED', (data) => this.onCalendarDateSelected(data));
@@ -173,8 +173,8 @@ const BookingsHandlers = {
    * Apre modale nuova prenotazione
    */
   openBookingModal() {
-    // FIX BUG: Uso la funzione globale openModal
-    openModal('bookingModal');
+    const modal = document.getElementById('bookingModal');
+    modal.classList.add('active');
     document.getElementById('bookingModalTitle').textContent = 'Nuova Prenotazione';
     document.getElementById('bookingForm').reset();
     
@@ -209,8 +209,8 @@ const BookingsHandlers = {
     document.getElementById('bookingIsPaid').checked = booking.isPaid;
     document.getElementById('bookingNotes').value = booking.notes || '';
     
-    // FIX BUG: Uso la funzione globale openModal
-    openModal('bookingModal');
+    const modal = document.getElementById('bookingModal');
+    modal.classList.add('active');
     
     // Cambia form submit per update
     const form = document.getElementById('bookingForm');
@@ -233,17 +233,14 @@ const BookingsHandlers = {
       
       const result = BookingsModule.update(id, updates);
       if (result.success) {
-        // FIX BUG: Uso la funzione globale closeModal
-        closeModal('bookingModal');
+        document.getElementById('bookingModal').classList.remove('active');
         document.getElementById('bookingForm').reset();
         form.onsubmit = null;
         this.renderBookings();
         CalendarComponent.render();
         
-        // Update stats se app.js ha il metodo
-        if (typeof window.updateStats === 'function') {
-          window.updateStats();
-        }
+        // Update stats via EventBus
+        EventBus.emit(EVENTS.BOOKING_UPDATED, { id, booking: result.booking });
       }
     };
   },
@@ -256,11 +253,6 @@ const BookingsHandlers = {
       BookingsModule.delete(id);
       this.renderBookings();
       CalendarComponent.render();
-      
-      // Update stats se app.js ha il metodo
-      if (typeof window.updateStats === 'function') {
-        window.updateStats();
-      }
     }
   },
 
@@ -285,16 +277,10 @@ const BookingsHandlers = {
     
     const result = BookingsModule.create(data);
     if (result.success) {
-      // FIX BUG: Uso la funzione globale closeModal
-      closeModal('bookingModal');
+      document.getElementById('bookingModal').classList.remove('active');
       document.getElementById('bookingForm').reset();
       this.renderBookings();
       CalendarComponent.render();
-      
-      // Update stats se app.js ha il metodo
-      if (typeof window.updateStats === 'function') {
-        window.updateStats();
-      }
     }
   },
 
@@ -302,8 +288,8 @@ const BookingsHandlers = {
    * Apre modale blocco date
    */
   openBlockDatesModal() {
-    // FIX BUG: Uso la funzione globale openModal
-    openModal('blockDatesModal');
+    const modal = document.getElementById('blockDatesModal');
+    modal.classList.add('active');
     document.getElementById('blockDatesForm').reset();
     EventBus.emit(EVENTS.MODAL_OPENED, { modal: 'blockDates' });
   },
@@ -318,16 +304,10 @@ const BookingsHandlers = {
     
     const result = BookingsModule.blockDates(startDate, endDate, reason);
     if (result.success) {
-      // FIX BUG: Uso la funzione globale closeModal
-      closeModal('blockDatesModal');
+      document.getElementById('blockDatesModal').classList.remove('active');
       document.getElementById('blockDatesForm').reset();
       this.renderBookings();
       CalendarComponent.render();
-      
-      // Update stats se app.js ha il metodo
-      if (typeof window.updateStats === 'function') {
-        window.updateStats();
-      }
     }
   },
 
