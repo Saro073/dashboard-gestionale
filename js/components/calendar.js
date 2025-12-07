@@ -144,9 +144,14 @@ const CalendarComponent = {
     
     return `
       <div class="day-booking ${isBlocked ? 'blocked' : ''}" 
-           data-booking-id="${booking.id}"
-           title="${Utils.escapeHtml(guestInfo.fullName)}">
-        ${isBlocked ? '🔒' : Utils.escapeHtml(guestInfo.fullName.substring(0, 8))}
+           data-booking-id="${booking.id}">
+        <span class="booking-name" title="${Utils.escapeHtml(guestInfo.fullName)}">
+          ${isBlocked ? '🔒' : Utils.escapeHtml(guestInfo.fullName.substring(0, 8))}
+        </span>
+        <button class="booking-delete-btn" 
+                data-booking-id="${booking.id}" 
+                title="Elimina prenotazione"
+                onclick="event.stopPropagation(); CalendarComponent.deleteBooking(${booking.id})">×</button>
       </div>
     `;
   },
@@ -299,6 +304,20 @@ const CalendarComponent = {
     const booking = BookingsModule.getById(bookingId);
     if (booking) {
       EventBus.emit('CALENDAR_BOOKING_SELECTED', { booking });
+    }
+  },
+
+  /**
+   * Elimina prenotazione dal calendario
+   */
+  deleteBooking(bookingId) {
+    const booking = BookingsModule.getById(bookingId);
+    if (!booking) return;
+    
+    const guestInfo = BookingsModule.getGuestInfo(booking);
+    if (confirm(`Eliminare la prenotazione di "${guestInfo.fullName}"?`)) {
+      BookingsModule.delete(bookingId);
+      this.render();
     }
   },
 
