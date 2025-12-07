@@ -7,6 +7,11 @@ const CalendarComponent = {
   currentDate: new Date(),
   selectedDate: null,
   container: null,
+  
+  // Airbnb-style date selection state
+  selectionState: 'IDLE',  // IDLE | SELECTING_CHECKOUT | SELECTED
+  selectedCheckIn: null,
+  selectedCheckOut: null,
 
   /**
    * Inizializza il calendario
@@ -43,6 +48,7 @@ const CalendarComponent = {
       <div class="calendar-wrapper">
         ${this.renderHeader(year, month)}
         ${this.renderCalendarGrid(year, month)}
+        ${this.renderSelectionSummary()}
         ${this.renderNextWeek(year, month)}
         ${this.renderStats(year, month)}
       </div>
@@ -114,6 +120,18 @@ const CalendarComponent = {
       
       const classes = ['calendar-day'];
       if (isToday) classes.push('today');
+      
+      // Selection state classes
+      if (this.selectedCheckIn && dateStr === this.selectedCheckIn) {
+        classes.push('selected-checkin');
+      }
+      if (this.selectedCheckOut && dateStr === this.selectedCheckOut) {
+        classes.push('selected-checkout');
+      }
+      if (this.isDateInRange(dateStr)) {
+        classes.push('in-range');
+      }
+      
       if (bookings.length > 0) {
         classes.push('has-booking');
         const booking = bookings[0];
@@ -282,19 +300,51 @@ const CalendarComponent = {
   },
 
   /**
-   * Handler click su data
+   * Handler click su data - Airbnb-style 2-step selection
    */
   onDateClick(date) {
-    this.selectedDate = date;
     const bookings = BookingsModule.getByDate(date);
     
+    // Se la data ha già una prenotazione, mostra dettagli (non interferisce con selezione)
     if (bookings.length > 0) {
-      // Mostra dettagli prenotazione esistente
       EventBus.emit('CALENDAR_BOOKING_SELECTED', { date, booking: bookings[0] });
-    } else {
-      // Permetti di creare nuova prenotazione
-      EventBus.emit('CALENDAR_DATE_SELECTED', { date });
+      return;
     }
+    
+    // FSM: Finite State Machine per selezione date
+    switch (this.selectionState) {
+      case 'IDLE':
+        // Step 1: Seleziona check-in
+        this.selectedCheckIn = date;
+        this.selectedCheckOut = null;
+        this.selectionState = 'SELECTING_CHECKOUT';
+        break;
+        
+      case 'SELECTING_CHECKOUT':
+        // Step 2: Seleziona check-out
+        const checkInDate = new Date(this.selectedCheckIn);
+        const selectedDate = new Date(date);
+        
+        if (selectedDate < checkInDate) {
+          // Click su data prima del check-in → reset e ricomincia
+          this.selectedCheckIn = date;
+          this.selectedCheckOut = null;
+        } else {
+          // Check-out valido
+          this.selectedCheckOut = date;
+          this.selectionState = 'SELECTED';
+        }
+        break;
+        
+      case 'SELECTED':
+        // Già selezionato → reset e ricomincia
+        this.resetSelection();
+        this.selectedCheckIn = date;
+        this.selectionState = 'SELECTING_CHECKOUT';
+        break;
+    }
+    
+    this.render();
   },
 
   /**
@@ -334,6 +384,110 @@ const CalendarComponent = {
     if (bookings.length > 0) {
       dayEl.classList.add('has-booking', `status-${bookings[0].status}`);
     }
+  },
+  
+  /**
+   * Verifica se una data è nel range selezionato
+   */
+  isDateInRange(dateStr) {
+    if (!this.selectedCheckIn || !this.selectedCheckOut) return false;
+    
+    const date = new Date(dateStr);
+    const checkIn = new Date(this.selectedCheckIn);
+    const checkOut = new Date(this.selectedCheckOut);
+    
+    return date > checkIn && date < checkOut;
+  },
+  
+  /**
+   * Calcola numero di notti
+   */
+  calculateNights() {
+    if (!this.selectedCheckIn || !this.selectedCheckOut) return 0;
+    
+    const checkIn = new Date(this.selectedCheckIn);
+    const checkOut = new Date(this.selectedCheckOut);
+    const diffTime = Math.abs(checkOut - checkIn);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    return diffDays;
+  },
+  
+  /**
+   * Reset selezione date
+   */
+  resetSelection() {
+    this.selectedCheckIn = null;
+    this.selectedCheckOut = null;
+    this.selectionState = 'IDLE';
+  },
+  
+  /**
+   * Render summary selezione (notti + pulsante)
+   */
+  renderSelectionSummary() {
+    if (this.selectionState === 'IDLE') return '';
+    
+    const nights = this.calculateNights();
+    const checkInFormatted = this.selectedCheckIn ? 
+      Utils.formatDate(this.selectedCheckIn) : '-';
+    const checkOutFormatted = this.selectedCheckOut ? 
+      Utils.formatDate(this.selectedCheckOut) : '-';
+    
+    const isComplete = this.selectionState === 'SELECTED';
+    
+    return `
+      <div class="calendar-selection-summary">
+        <div class="selection-info">
+          <div class="selection-dates">
+            <span class="selection-label">Check-in:</span>
+            <strong>${checkInFormatted}</strong>
+            <span class="selection-separator">→</span>
+            <span class="selection-label">Check-out:</span>
+            <strong>${checkOutFormatted}</strong>
+          </div>
+          ${isComplete ? `
+            <div class="selection-nights">
+              <span class="nights-badge">${nights} ${nights === 1 ? 'notte' : 'notti'}</span>
+            </div>
+          ` : `
+            <div class="selection-hint">
+              ${this.selectionState === 'SELECTING_CHECKOUT' ? 
+                'Seleziona la data di check-out' : ''}
+            </div>
+          `}
+        </div>
+        <div class="selection-actions">
+          <button class="btn btn-secondary btn-sm" 
+                  onclick="CalendarComponent.resetSelection(); CalendarComponent.render()">
+            Annulla
+          </button>
+          ${isComplete ? `
+            <button class="btn btn-primary btn-sm" 
+                    onclick="CalendarComponent.proceedToBooking()">
+              Crea Prenotazione
+            </button>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  },
+  
+  /**
+   * Procedi alla creazione prenotazione con date selezionate
+   */
+  proceedToBooking() {
+    if (this.selectionState !== 'SELECTED') return;
+    
+    EventBus.emit('CALENDAR_DATES_SELECTED', {
+      checkIn: this.selectedCheckIn,
+      checkOut: this.selectedCheckOut,
+      nights: this.calculateNights()
+    });
+    
+    // Reset selezione dopo apertura modale
+    this.resetSelection();
+    this.render();
   }
 };
 

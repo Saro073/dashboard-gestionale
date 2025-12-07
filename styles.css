@@ -1413,6 +1413,34 @@ textarea {
   background: rgba(37, 99, 235, 0.05);
 }
 
+/* Airbnb-style date selection */
+.calendar-day.selected-checkin {
+  background: var(--primary-color) !important;
+  color: white !important;
+  border-color: var(--primary-color) !important;
+  font-weight: bold;
+}
+
+.calendar-day.selected-checkout {
+  background: var(--primary-color) !important;
+  color: white !important;
+  border-color: var(--primary-color) !important;
+  font-weight: bold;
+}
+
+.calendar-day.in-range {
+  background: rgba(37, 99, 235, 0.15) !important;
+  border-color: rgba(37, 99, 235, 0.3) !important;
+}
+
+.calendar-day.selected-checkin .day-number::before {
+  content: '📥 ';
+}
+
+.calendar-day.selected-checkout .day-number::before {
+  content: '📤 ';
+}
+
 .calendar-day.has-booking {
   background: var(--success-color);
   color: white;
@@ -1500,6 +1528,87 @@ textarea {
   position: absolute;
   right: 2px;
   top: 2px;
+}
+
+/* Calendar Selection Summary (Airbnb-style) */
+.calendar-selection-summary {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(59, 130, 246, 0.05));
+  border: 2px solid var(--primary-color);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.5rem;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.selection-info {
+  flex: 1;
+}
+
+.selection-dates {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+}
+
+.selection-label {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.selection-separator {
+  color: var(--primary-color);
+  font-weight: bold;
+  font-size: 1.25rem;
+}
+
+.selection-nights {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nights-badge {
+  background: var(--primary-color);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-full);
+  font-weight: 600;
+  font-size: 0.875rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nights-badge::before {
+  content: '🌙';
+}
+
+.selection-hint {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-style: italic;
+}
+
+.selection-actions {
+  display: flex;
+  gap: 0.75rem;
 }
 
 /* Next Week Preview */
