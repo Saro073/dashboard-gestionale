@@ -7,6 +7,13 @@ class DashboardApp {
     this.currentEditingNoteId = null; // Per gestire edit note
     this.currentEditingContactId = null; // Contatti
     this.currentEditingTransactionId = null; // Transazioni
+    
+    // Stato selezione multipla
+    this.selectedTasks = new Set();
+    this.selectedContacts = new Set();
+    this.selectedNotes = new Set();
+    this.selectedDocuments = new Set();
+    
     this.init();
   }
   
@@ -698,11 +705,29 @@ class DashboardApp {
     
     if (tasks.length === 0) {
       container.innerHTML = '<p class="empty-state">Nessun task trovato</p>';
+      this.updateTaskBulkActionsBar();
+      this.updateTaskSelectAllCheckbox();
       return;
     }
     
-    container.innerHTML = tasks.map(task => `
-      <div class="task-item ${task.completed ? 'completed' : ''}">
+    container.innerHTML = tasks.map(task => {
+      // Mappa stato → label e classe CSS
+      const statusLabels = {
+        'todo': 'Da fare',
+        'in-progress': 'In corso',
+        'paused': 'In pausa',
+        'completed': 'Completato',
+        'cancelled': 'Annullato'
+      };
+      const statusLabel = statusLabels[task.status] || 'Da fare';
+      const statusClass = task.status || 'todo';
+      
+      const isSelected = this.selectedTasks.has(task.id);
+      
+      return `
+      <div class="task-item ${task.completed ? 'completed' : ''} ${isSelected ? 'selected' : ''}">
+        <input type="checkbox" class="task-select-checkbox" ${isSelected ? 'checked' : ''}
+               onchange="app.toggleTaskSelection(${task.id}, this.checked)">
         <input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''}
                onchange="app.toggleTask(${task.id})" 
                ${PermissionsManager.canEditTask(task) ? '' : 'disabled'}>
@@ -711,6 +736,7 @@ class DashboardApp {
           ${task.description ? `<p>${Utils.escapeHtml(task.description)}</p>` : ''}
           <div class="item-meta">
             <span class="item-badge badge-${task.priority}">${task.priority}</span>
+            <span class="item-badge badge-status status-${statusClass}">${statusLabel}</span>
             ${task.dueDate ? `<span>📅 ${Utils.formatDate(task.dueDate)}</span>` : ''}
             <span>Assegnato a: ${task.assignedToUsername}</span>
           </div>
@@ -722,7 +748,11 @@ class DashboardApp {
             `<button class="btn btn-sm btn-danger" onclick="app.deleteTask(${task.id})">Elimina</button>` : ''}
         </div>
       </div>
-    `).join('');
+      `;
+    }).join('');
+    
+    this.updateTaskBulkActionsBar();
+    this.updateTaskSelectAllCheckbox();
   }
   
   /**
@@ -2607,6 +2637,10 @@ class DashboardApp {
       this.openTaskModal();
     });
     
+    document.getElementById('importTasksBtn').addEventListener('click', () => {
+      this.openImportCSVModal();
+    });
+    
     document.getElementById('taskFilter').addEventListener('change', () => {
       this.renderTasks();
     });
@@ -2615,6 +2649,129 @@ class DashboardApp {
       e.preventDefault();
       this.saveTask();
     });
+    
+    // CSV Import listeners
+    document.getElementById('csvFileInput').addEventListener('change', (e) => {
+      this.handleCSVFileSelect(e);
+    });
+    
+    document.getElementById('confirmImportBtn').addEventListener('click', () => {
+      this.handleImportConfirm();
+    });
+    
+    // Bulk selection listeners
+    document.getElementById('taskSelectAll').addEventListener('change', (e) => {
+      this.toggleSelectAllTasks(e.target.checked);
+    });
+    
+    document.getElementById('taskBulkDelete').addEventListener('click', () => {
+      this.bulkDeleteTasks();
+    });
+    
+    document.getElementById('taskBulkCancel').addEventListener('click', () => {
+      this.cancelTaskSelection();
+    });
+  }
+  
+  openImportCSVModal() {
+    // Reset modal state
+    document.getElementById('csvFileInput').value = '';
+    document.getElementById('importMergeMode').checked = true;
+    document.getElementById('importAssignToMe').checked = true;
+    document.getElementById('importPreviewContainer').style.display = 'none';
+    document.getElementById('confirmImportBtn').disabled = true;
+    this.parsedTasksCache = null;
+    
+    document.getElementById('importCSVModal').classList.add('active');
+  }
+  
+  async handleCSVFileSelect(event) {
+    const file = event.target.files[0];
+    
+    if (!file) {
+      return;
+    }
+    
+    // Verifica tipo file
+    if (!file.name.endsWith('.csv') && file.type !== 'text/csv') {
+      NotificationService.error('Seleziona un file CSV valido');
+      return;
+    }
+    
+    try {
+      // Leggi contenuto file
+      const content = await this.readFileAsText(file);
+      
+      // Parsa CSV
+      const parsedTasks = CSVImportModule.parseCSV(content);
+      
+      if (parsedTasks.length === 0) {
+        NotificationService.warning('Nessun task valido trovato nel CSV');
+        return;
+      }
+      
+      // Salva in cache per import
+      this.parsedTasksCache = parsedTasks;
+      
+      // Mostra preview
+      const previewHTML = CSVImportModule.generatePreview(parsedTasks);
+      document.getElementById('importPreview').innerHTML = previewHTML;
+      document.getElementById('importPreviewContainer').style.display = 'block';
+      
+      // Abilita pulsante conferma
+      document.getElementById('confirmImportBtn').disabled = false;
+      
+      NotificationService.success(`${parsedTasks.length} task pronti per l'import`);
+      
+    } catch (error) {
+      ErrorHandler.handle(error, 'DashboardApp.handleCSVFileSelect', true);
+      NotificationService.error('Errore durante la lettura del file CSV');
+    }
+  }
+  
+  readFileAsText(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = (e) => reject(e);
+      reader.readAsText(file, 'UTF-8');
+    });
+  }
+  
+  handleImportConfirm() {
+    if (!this.parsedTasksCache || this.parsedTasksCache.length === 0) {
+      NotificationService.error('Nessun task da importare');
+      return;
+    }
+    
+    const mergeMode = document.getElementById('importMergeMode').checked;
+    const assignToMe = document.getElementById('importAssignToMe').checked;
+    
+    // Esegui import
+    const result = CSVImportModule.importTasks(this.parsedTasksCache, {
+      merge: mergeMode,
+      assignToCurrentUser: assignToMe
+    });
+    
+    if (result.success) {
+      // Chiudi modal
+      document.getElementById('importCSVModal').classList.remove('active');
+      
+      // Aggiorna UI
+      this.renderTasks();
+      
+      // Reset cache
+      this.parsedTasksCache = null;
+      
+      // Mostra riepilogo
+      if (result.skipped > 0) {
+        NotificationService.info(
+          `Import completato: ${result.imported} importati, ${result.skipped} saltati (duplicati)`
+        );
+      } else {
+        NotificationService.success(`${result.imported} task importati con successo!`);
+      }
+    }
   }
   
   openTaskModal() {
@@ -2636,6 +2793,7 @@ class DashboardApp {
     document.getElementById('taskTitle').value = task.title;
     document.getElementById('taskDescription').value = task.description || '';
     document.getElementById('taskPriority').value = task.priority;
+    document.getElementById('taskStatus').value = task.status || 'todo';
     document.getElementById('taskDueDate').value = task.dueDate || '';
     
     document.getElementById('taskModal').classList.add('active');
@@ -2659,6 +2817,7 @@ class DashboardApp {
       title: document.getElementById('taskTitle').value,
       description: document.getElementById('taskDescription').value,
       priority: document.getElementById('taskPriority').value,
+      status: document.getElementById('taskStatus').value,
       dueDate: document.getElementById('taskDueDate').value
     };
     
@@ -3079,6 +3238,124 @@ class DashboardApp {
       const usersNavItem = document.getElementById('usersNavItem');
       if (usersNavItem) usersNavItem.style.display = 'block';
     }
+  }
+  
+  // ==================== BULK SELECTION METHODS ====================
+  
+  /**
+   * Toggle select all tasks
+   */
+  toggleSelectAllTasks(checked) {
+    const tasks = TasksModule.getAll();
+    const filter = document.getElementById('taskFilter').value;
+    
+    let filteredTasks = tasks;
+    if (filter === 'active') {
+      filteredTasks = tasks.filter(t => !t.completed);
+    } else if (filter === 'completed') {
+      filteredTasks = tasks.filter(t => t.completed);
+    }
+    
+    if (checked) {
+      filteredTasks.forEach(task => this.selectedTasks.add(task.id));
+    } else {
+      this.selectedTasks.clear();
+    }
+    
+    this.renderTasks();
+    this.updateTaskBulkActionsBar();
+  }
+  
+  /**
+   * Toggle individual task selection
+   */
+  toggleTaskSelection(taskId, checked) {
+    if (checked) {
+      this.selectedTasks.add(taskId);
+    } else {
+      this.selectedTasks.delete(taskId);
+    }
+    
+    this.updateTaskBulkActionsBar();
+    this.updateTaskSelectAllCheckbox();
+  }
+  
+  /**
+   * Update bulk actions bar visibility and count
+   */
+  updateTaskBulkActionsBar() {
+    const bulkActionsBar = document.getElementById('taskBulkActions');
+    const selectedCount = document.getElementById('taskSelectedCount');
+    
+    if (this.selectedTasks.size > 0) {
+      bulkActionsBar.style.display = 'flex';
+      selectedCount.textContent = `${this.selectedTasks.size} task selezionati`;
+    } else {
+      bulkActionsBar.style.display = 'none';
+    }
+  }
+  
+  /**
+   * Update select all checkbox state
+   */
+  updateTaskSelectAllCheckbox() {
+    const selectAllCheckbox = document.getElementById('taskSelectAll');
+    const tasks = TasksModule.getAll();
+    const filter = document.getElementById('taskFilter').value;
+    
+    let filteredTasks = tasks;
+    if (filter === 'active') {
+      filteredTasks = tasks.filter(t => !t.completed);
+    } else if (filter === 'completed') {
+      filteredTasks = tasks.filter(t => t.completed);
+    }
+    
+    if (filteredTasks.length === 0) {
+      selectAllCheckbox.checked = false;
+      selectAllCheckbox.indeterminate = false;
+    } else {
+      const allSelected = filteredTasks.every(t => this.selectedTasks.has(t.id));
+      const someSelected = filteredTasks.some(t => this.selectedTasks.has(t.id));
+      
+      selectAllCheckbox.checked = allSelected;
+      selectAllCheckbox.indeterminate = someSelected && !allSelected;
+    }
+  }
+  
+  /**
+   * Bulk delete selected tasks
+   */
+  bulkDeleteTasks() {
+    if (this.selectedTasks.size === 0) {
+      NotificationService.warning('Nessun task selezionato');
+      return;
+    }
+    
+    const count = this.selectedTasks.size;
+    const confirmed = confirm(`Vuoi davvero eliminare ${count} task selezionati?`);
+    
+    if (!confirmed) return;
+    
+    const ids = Array.from(this.selectedTasks);
+    const result = TasksModule.bulkDelete(ids);
+    
+    if (result.success) {
+      this.selectedTasks.clear();
+      this.renderTasks();
+      this.updateTaskBulkActionsBar();
+      this.updateTaskSelectAllCheckbox();
+      this.updateStats();
+    }
+  }
+  
+  /**
+   * Cancel task selection
+   */
+  cancelTaskSelection() {
+    this.selectedTasks.clear();
+    this.renderTasks();
+    this.updateTaskBulkActionsBar();
+    this.updateTaskSelectAllCheckbox();
   }
   
   /**

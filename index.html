@@ -219,13 +219,26 @@
             <!-- Tasks Section -->
             <div id="tasksSection" class="content-section">
                 <div class="section-toolbar">
+                    <label class="bulk-select-all">
+                        <input type="checkbox" id="taskSelectAll">
+                        <span>Seleziona tutti</span>
+                    </label>
                     <select id="taskFilter" class="form-control">
                         <option value="all">Tutti</option>
                         <option value="active">Attivi</option>
                         <option value="completed">Completati</option>
                     </select>
+                    <button id="importTasksBtn" class="btn btn-secondary">📥 Importa CSV</button>
                     <button id="addTaskBtn" class="btn btn-primary">+ Aggiungi Task</button>
                 </div>
+                
+                <!-- Barra azioni bulk -->
+                <div id="taskBulkActions" class="bulk-actions-bar" style="display: none;">
+                    <span id="taskSelectedCount" class="bulk-count">0 task selezionati</span>
+                    <button id="taskBulkDelete" class="btn btn-danger btn-sm">🗑️ Elimina selezionati</button>
+                    <button id="taskBulkCancel" class="btn btn-secondary btn-sm">Annulla</button>
+                </div>
+                
                 <div id="tasksList" class="items-list">
                     <p class="empty-state">Nessun task presente</p>
                 </div>
@@ -939,6 +952,59 @@
         </div>
     </div>
 
+    <!-- CSV Import Modal -->
+    <div id="importCSVModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>📥 Importa Task da CSV</h2>
+                <button class="modal-close" onclick="document.getElementById('importCSVModal').classList.remove('active')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="import-instructions">
+                    <h3>📋 Formato CSV Supportato</h3>
+                    <p>Il file CSV deve seguire il formato della Roadmap:</p>
+                    <code>Done, Priorità, Stato, Periodo, Attività</code>
+                    <ul>
+                        <li><strong>Done:</strong> true/false o checkbox (✓, x, 1, 0)</li>
+                        <li><strong>Priorità:</strong> Bassa, Media, Alta, Critica</li>
+                        <li><strong>Stato:</strong> Emoji (✅, 🔄, ❌, ⏸️) o testo</li>
+                        <li><strong>Periodo:</strong> "09-15 Dicembre 2025" o "Q1 2026"</li>
+                        <li><strong>Attività:</strong> Titolo task con tag [CATEGORIA] opzionali</li>
+                    </ul>
+                </div>
+                
+                <div class="form-group">
+                    <label for="csvFileInput">Seleziona file CSV</label>
+                    <input type="file" id="csvFileInput" accept=".csv,text/csv" class="form-control">
+                </div>
+                
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="importMergeMode" checked>
+                        Salta duplicati (merge mode)
+                    </label>
+                    <small>Se attivo, i task con stesso titolo non saranno reimportati</small>
+                </div>
+                
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="importAssignToMe" checked>
+                        Assegna tutti i task a me
+                    </label>
+                </div>
+                
+                <div id="importPreviewContainer" style="display: none;">
+                    <h3>👁️ Anteprima Import</h3>
+                    <div id="importPreview"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('importCSVModal').classList.remove('active')">Annulla</button>
+                <button type="button" id="confirmImportBtn" class="btn btn-primary" disabled>Importa Task</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Task Modal -->
     <div id="taskModal" class="modal">
         <div class="modal-content">
@@ -962,6 +1028,16 @@
                         <option value="media" selected>Media</option>
                         <option value="alta">Alta</option>
                         <option value="critical">Critical</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="taskStatus">Stato</label>
+                    <select id="taskStatus">
+                        <option value="todo" selected>Da fare</option>
+                        <option value="in-progress">In corso</option>
+                        <option value="paused">In pausa</option>
+                        <option value="completed">Completato</option>
+                        <option value="cancelled">Annullato</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -1649,6 +1725,7 @@
     <script src="js/modules/categories.js"></script>
     <script src="js/modules/contacts.js"></script>
     <script src="js/modules/tasks.js"></script>
+    <script src="js/modules/import-csv.js"></script>
     <script src="js/modules/notes.js"></script>
     <script src="js/modules/documents.js"></script>
     <script src="js/modules/bookings.js"></script>

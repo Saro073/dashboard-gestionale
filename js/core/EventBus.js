@@ -157,6 +157,7 @@ const EVENTS = {
   TASK_DELETED: 'task:deleted',
   TASK_COMPLETED: 'task:completed',
   TASKS_LOADED: 'tasks:loaded',
+  TASKS_IMPORTED: 'tasks:imported',
 
   // Note
   NOTE_CREATED: 'note:created',

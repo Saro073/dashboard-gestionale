@@ -44,6 +44,7 @@ const TasksModule = {
       title: taskData.title.trim(),
       description: taskData.description?.trim() || '',
       priority: taskData.priority || CONFIG.TASK_PRIORITIES.MEDIA,
+      status: taskData.status || 'todo',
       dueDate: taskData.dueDate || null,
       completed: false,
       assignedTo: taskData.assignedTo || currentUser.id,
@@ -183,6 +184,59 @@ const TasksModule = {
     NotificationService.success('Task eliminato');
     
     return { success: true, message: 'Task eliminato' };
+  },
+  
+  /**
+   * Elimina task multipli
+   * @param {Array<number>} ids - Array ID task da eliminare
+   * @returns {object} - { success: boolean, deleted: number, errors: number, message: string }
+   */
+  bulkDelete(ids) {
+    if (!ids || ids.length === 0) {
+      return { success: false, deleted: 0, errors: 0, message: 'Nessun task selezionato' };
+    }
+    
+    const allTasks = StorageManager.load(CONFIG.STORAGE_KEYS.TASKS, []);
+    let deleted = 0;
+    let errors = 0;
+    
+    // Verifica permessi per ogni task
+    const toDelete = ids.filter(id => {
+      const task = allTasks.find(t => t.id === id);
+      if (!task) {
+        errors++;
+        return false;
+      }
+      if (!PermissionsManager.canDeleteTask(task)) {
+        errors++;
+        return false;
+      }
+      return true;
+    });
+    
+    // Filtra task da eliminare
+    const filtered = allTasks.filter(t => !toDelete.includes(t.id));
+    deleted = allTasks.length - filtered.length;
+    
+    if (deleted > 0) {
+      StorageManager.save(CONFIG.STORAGE_KEYS.TASKS, filtered);
+      
+      // Log attività bulk
+      ActivityLog.log(CONFIG.ACTION_TYPES.DELETE, CONFIG.ENTITY_TYPES.TASK, null, {
+        action: 'bulk-delete',
+        count: deleted,
+        ids: toDelete
+      });
+      
+      EventBus.emit(EVENTS.TASK_DELETED, { ids: toDelete, bulk: true });
+      NotificationService.success(`${deleted} task eliminati`);
+    }
+    
+    if (errors > 0) {
+      NotificationService.warning(`${errors} task non eliminati (permessi insufficienti)`);
+    }
+    
+    return { success: deleted > 0, deleted, errors, message: `${deleted} task eliminati` };
   },
   
   /**
