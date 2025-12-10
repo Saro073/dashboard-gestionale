@@ -2677,6 +2677,21 @@ class DashboardApp {
       phonesContainer.appendChild(row);
     });
 
+    // Popola notification preferences
+    if (contact.notificationPreferences) {
+      // Telegram
+      document.getElementById('contactNotifyTelegram').checked = contact.notificationPreferences.telegram?.enabled || false;
+      document.getElementById('contactTelegramChatId').value = contact.notificationPreferences.telegram?.chatId || '';
+      
+      // Email
+      document.getElementById('contactNotifyEmail').checked = contact.notificationPreferences.email?.enabled || false;
+      document.getElementById('contactEmailAddress').value = contact.notificationPreferences.email?.address || '';
+      
+      // SMS (disabled for now)
+      document.getElementById('contactNotifySMS').checked = contact.notificationPreferences.sms?.enabled || false;
+      document.getElementById('contactSMSPhone').value = contact.notificationPreferences.sms?.phone || '';
+    }
+
     this.populateCategoryDatalist();
     document.getElementById('contactModal').classList.add('active');
     EventBus.emit(EVENTS.MODAL_OPENED, { modal: 'contact', id });
@@ -2727,7 +2742,34 @@ class DashboardApp {
       country: document.getElementById('contactBusinessAddressCountry').value.trim()
     };
 
-    const payload = { firstName, lastName, emails, phones, address, businessAddress, company, category, notes };
+    // Raccogli notification preferences
+    const notificationPreferences = {
+      telegram: {
+        enabled: document.getElementById('contactNotifyTelegram').checked,
+        chatId: document.getElementById('contactTelegramChatId').value.trim()
+      },
+      email: {
+        enabled: document.getElementById('contactNotifyEmail').checked,
+        address: document.getElementById('contactEmailAddress').value.trim()
+      },
+      sms: {
+        enabled: document.getElementById('contactNotifySMS').checked,
+        phone: document.getElementById('contactSMSPhone').value.trim()
+      }
+    };
+
+    const payload = { 
+      firstName, 
+      lastName, 
+      emails, 
+      phones, 
+      address, 
+      businessAddress, 
+      company, 
+      category, 
+      notes,
+      notificationPreferences
+    };
     let result;
     if (this.currentEditingContactId) {
       result = ContactsModule.update(this.currentEditingContactId, payload);
@@ -3763,6 +3805,9 @@ class DashboardApp {
     
     form.reset();
     
+    // Popola dropdown contatti
+    this.populatePropertyContactsDropdowns();
+    
     if (propertyId) {
       // Edit mode
       const property = PropertiesModule.getById(propertyId);
@@ -3777,6 +3822,39 @@ class DashboardApp {
       document.getElementById('propertyCountry').value = property.address?.country || 'Italia';
       document.getElementById('propertyColor').value = property.color || '#3b82f6';
       
+      // Preseleziona contatti assegnati
+      if (property.contacts) {
+        // Cleaning
+        const cleaningSelect = document.getElementById('propertyContactsCleaning');
+        if (cleaningSelect && property.contacts.cleaning) {
+          Array.from(cleaningSelect.options).forEach(opt => {
+            opt.selected = property.contacts.cleaning.includes(parseInt(opt.value));
+          });
+        }
+        
+        // Maintenance
+        const maintenanceSelect = document.getElementById('propertyContactsMaintenance');
+        if (maintenanceSelect && property.contacts.maintenance) {
+          Array.from(maintenanceSelect.options).forEach(opt => {
+            opt.selected = property.contacts.maintenance.includes(parseInt(opt.value));
+          });
+        }
+        
+        // Owner
+        const ownerSelect = document.getElementById('propertyContactsOwner');
+        if (ownerSelect && property.contacts.owner) {
+          ownerSelect.value = property.contacts.owner;
+        }
+        
+        // Emergency
+        const emergencySelect = document.getElementById('propertyContactsEmergency');
+        if (emergencySelect && property.contacts.emergency) {
+          Array.from(emergencySelect.options).forEach(opt => {
+            opt.selected = property.contacts.emergency.includes(parseInt(opt.value));
+          });
+        }
+      }
+      
       form.dataset.editId = propertyId;
     } else {
       // Create mode
@@ -3788,11 +3866,65 @@ class DashboardApp {
   }
 
   /**
+   * Popola dropdown contatti per property modal
+   */
+  populatePropertyContactsDropdowns() {
+    if (!ContactsModule) return;
+    
+    const contacts = ContactsModule.getAll();
+    
+    // Cleaning
+    const cleaningSelect = document.getElementById('propertyContactsCleaning');
+    if (cleaningSelect) {
+      cleaningSelect.innerHTML = contacts.map(c => 
+        `<option value="${c.id}">${c.firstName} ${c.lastName} ${c.company ? '(' + c.company + ')' : ''}</option>`
+      ).join('');
+    }
+    
+    // Maintenance
+    const maintenanceSelect = document.getElementById('propertyContactsMaintenance');
+    if (maintenanceSelect) {
+      maintenanceSelect.innerHTML = contacts.map(c => 
+        `<option value="${c.id}">${c.firstName} ${c.lastName} ${c.company ? '(' + c.company + ')' : ''}</option>`
+      ).join('');
+    }
+    
+    // Owner
+    const ownerSelect = document.getElementById('propertyContactsOwner');
+    if (ownerSelect) {
+      ownerSelect.innerHTML = '<option value="">Nessuno</option>' + contacts.map(c => 
+        `<option value="${c.id}">${c.firstName} ${c.lastName} ${c.company ? '(' + c.company + ')' : ''}</option>`
+      ).join('');
+    }
+    
+    // Emergency
+    const emergencySelect = document.getElementById('propertyContactsEmergency');
+    if (emergencySelect) {
+      emergencySelect.innerHTML = contacts.map(c => 
+        `<option value="${c.id}">${c.firstName} ${c.lastName} ${c.company ? '(' + c.company + ')' : ''}</option>`
+      ).join('');
+    }
+  }
+
+  /**
    * Save property
    */
   saveProperty() {
     const form = document.getElementById('propertyForm');
     if (!form || !PropertiesModule) return;
+    
+    // Raccogli contatti selezionati
+    const cleaningSelect = document.getElementById('propertyContactsCleaning');
+    const maintenanceSelect = document.getElementById('propertyContactsMaintenance');
+    const ownerSelect = document.getElementById('propertyContactsOwner');
+    const emergencySelect = document.getElementById('propertyContactsEmergency');
+    
+    const contacts = {
+      cleaning: cleaningSelect ? Array.from(cleaningSelect.selectedOptions).map(opt => parseInt(opt.value)) : [],
+      maintenance: maintenanceSelect ? Array.from(maintenanceSelect.selectedOptions).map(opt => parseInt(opt.value)) : [],
+      owner: ownerSelect && ownerSelect.value ? parseInt(ownerSelect.value) : null,
+      emergency: emergencySelect ? Array.from(emergencySelect.selectedOptions).map(opt => parseInt(opt.value)) : []
+    };
     
     const data = {
       name: document.getElementById('propertyName').value,
@@ -3803,7 +3935,8 @@ class DashboardApp {
         zip: document.getElementById('propertyZip').value,
         country: document.getElementById('propertyCountry').value
       },
-      color: document.getElementById('propertyColor').value
+      color: document.getElementById('propertyColor').value,
+      contacts: contacts
     };
     
     let result;

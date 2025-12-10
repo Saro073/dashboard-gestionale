@@ -900,6 +900,44 @@
                         <small>Utilizzato nei grafici e nelle visualizzazioni</small>
                     </div>
 
+                    <fieldset class="form-section">
+                        <legend>👥 Contatti Assegnati</legend>
+                        <p class="form-help-text">Assegna contatti per ruolo operativo. Riceveranno notifiche automatiche per questa proprietà.</p>
+                        
+                        <div class="form-group">
+                            <label for="propertyContactsCleaning">🧹 Staff Pulizie</label>
+                            <select id="propertyContactsCleaning" multiple class="form-control multi-select" size="4">
+                                <!-- Popolato dinamicamente da JS -->
+                            </select>
+                            <small>Riceveranno notifiche per pulizie programmate</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="propertyContactsMaintenance">🔧 Manutentori</label>
+                            <select id="propertyContactsMaintenance" multiple class="form-control multi-select" size="4">
+                                <!-- Popolato dinamicamente da JS -->
+                            </select>
+                            <small>Riceveranno notifiche per interventi manutenzione</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="propertyContactsOwner">🏠 Proprietario</label>
+                            <select id="propertyContactsOwner" class="form-control">
+                                <option value="">Nessuno</option>
+                                <!-- Popolato dinamicamente da JS -->
+                            </select>
+                            <small>Riceverà notifiche per prenotazioni e situazioni importanti</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="propertyContactsEmergency">🚨 Contatti Emergenza</label>
+                            <select id="propertyContactsEmergency" multiple class="form-control multi-select" size="4">
+                                <!-- Popolato dinamicamente da JS -->
+                            </select>
+                            <small>Riceveranno notifiche per situazioni urgenti</small>
+                        </div>
+                    </fieldset>
+
                     <div class="modal-actions">
                         <button type="button" class="btn btn-secondary" onclick="document.getElementById('propertyModal').classList.remove('active')">Annulla</button>
                         <button type="submit" class="btn btn-primary">Salva</button>
@@ -1060,6 +1098,66 @@
                         <legend>📝 Note</legend>
                         <div class="form-group">
                             <textarea id="contactNotes" rows="4" placeholder="Aggiungi note o informazioni aggiuntive..."></textarea>
+                        </div>
+                    </fieldset>
+                    
+                    <!-- NOTIFICATION PREFERENCES -->
+                    <fieldset class="form-section">
+                        <legend>🔔 Preferenze Notifiche</legend>
+                        <p class="form-help-text">Configura come ricevere notifiche automatiche quando assegnato a una proprietà.</p>
+                        
+                        <div class="notification-prefs-grid">
+                            <!-- Telegram -->
+                            <div class="notification-pref-card">
+                                <div class="pref-header">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="contactNotifyTelegram">
+                                        <span>📱 Telegram</span>
+                                    </label>
+                                </div>
+                                <div class="pref-body">
+                                    <div class="form-group">
+                                        <label for="contactTelegramChatId">Chat ID</label>
+                                        <input type="text" id="contactTelegramChatId" placeholder="123456789" class="form-control">
+                                        <small>Ottieni il tuo Chat ID chattando con @userinfobot su Telegram</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Email -->
+                            <div class="notification-pref-card">
+                                <div class="pref-header">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="contactNotifyEmail" checked>
+                                        <span>📧 Email</span>
+                                    </label>
+                                </div>
+                                <div class="pref-body">
+                                    <div class="form-group">
+                                        <label for="contactEmailAddress">Indirizzo Email</label>
+                                        <input type="email" id="contactEmailAddress" placeholder="email@example.com" class="form-control">
+                                        <small>Usa una delle email sopra o specifica un'altra</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- SMS (Future) -->
+                            <div class="notification-pref-card disabled">
+                                <div class="pref-header">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="contactNotifySMS" disabled>
+                                        <span>📲 SMS</span>
+                                        <span class="badge-coming-soon">Coming Soon</span>
+                                    </label>
+                                </div>
+                                <div class="pref-body">
+                                    <div class="form-group">
+                                        <label for="contactSMSPhone">Numero Telefono</label>
+                                        <input type="tel" id="contactSMSPhone" placeholder="+39 123 456789" class="form-control" disabled>
+                                        <small>Funzionalità in arrivo</small>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </fieldset>
                     
