@@ -3,6 +3,11 @@
 const AuthManager = {
   currentUser: null,
   
+  // Rate limiting per brute-force protection
+  loginAttempts: {}, // { username: { count: 0, lockedUntil: null } }
+  MAX_ATTEMPTS: 5,
+  LOCKOUT_DURATION: 15 * 60 * 1000, // 15 minuti in millisecondi
+  
   /**
    * Inizializza sistema autenticazione
    */
@@ -12,10 +17,100 @@ const AuthManager = {
     
     // Recupera sessione corrente
     this.loadSession();
+    
+    // Carica tentativi falliti da localStorage
+    this._loadLoginAttempts();
   },
   
   /**
-   * Login utente (sicuro con PasswordHash)
+   * Carica tentativi login falliti da localStorage
+   * @private
+   */
+  _loadLoginAttempts() {
+    try {
+      const stored = localStorage.getItem('auth_login_attempts');
+      if (stored) {
+        this.loginAttempts = JSON.parse(stored);
+      }
+    } catch (e) {
+      console.error('Errore caricamento login attempts:', e);
+    }
+  },
+  
+  /**
+   * Salva tentativi login falliti in localStorage
+   * @private
+   */
+  _saveLoginAttempts() {
+    try {
+      localStorage.setItem('auth_login_attempts', JSON.stringify(this.loginAttempts));
+    } catch (e) {
+      console.error('Errore salvataggio login attempts:', e);
+    }
+  },
+  
+  /**
+   * Verifica se account è bloccato per rate limiting
+   * @param {string} username - Username da controllare
+   * @returns {object} - { isLocked: boolean, remainingTime: number }
+   * @private
+   */
+  _checkRateLimit(username) {
+    const now = Date.now();
+    const attempt = this.loginAttempts[username];
+    
+    if (!attempt) {
+      return { isLocked: false, remainingTime: 0 };
+    }
+    
+    // Se lockout è scaduto, resetta
+    if (attempt.lockedUntil && now >= attempt.lockedUntil) {
+      delete this.loginAttempts[username];
+      this._saveLoginAttempts();
+      return { isLocked: false, remainingTime: 0 };
+    }
+    
+    // Se account è bloccato
+    if (attempt.lockedUntil && now < attempt.lockedUntil) {
+      const remainingTime = Math.ceil((attempt.lockedUntil - now) / 1000); // secondi
+      return { isLocked: true, remainingTime };
+    }
+    
+    return { isLocked: false, remainingTime: 0 };
+  },
+  
+  /**
+   * Registra tentativo login fallito
+   * @param {string} username - Username
+   * @private
+   */
+  _recordFailedAttempt(username) {
+    if (!this.loginAttempts[username]) {
+      this.loginAttempts[username] = { count: 0, lockedUntil: null };
+    }
+    
+    this.loginAttempts[username].count++;
+    
+    // Se raggiunto limite, attiva lockout
+    if (this.loginAttempts[username].count >= this.MAX_ATTEMPTS) {
+      this.loginAttempts[username].lockedUntil = Date.now() + this.LOCKOUT_DURATION;
+    }
+    
+    this._saveLoginAttempts();
+  },
+  
+  /**
+   * Resetta tentativi login falliti (dopo successo)
+   * @param {string} username - Username
+   * @private
+   */
+  _resetAttempts(username) {
+    delete this.loginAttempts[username];
+    this._saveLoginAttempts();
+  },
+  
+  /**
+   * Login utente (sicuro con PasswordHash + Rate Limiting)
    * @param {string} username - Username
    * @param {string} password - Password (plaintext)
    * @returns {object} - { success: boolean, user: object|null, message: string }
@@ -26,22 +121,49 @@ const AuthManager = {
       return { success: false, user: null, message: 'Username e password richiesti' };
     }
     
+    // RATE LIMITING: Controlla se account è bloccato
+    const rateLimitCheck = this._checkRateLimit(username);
+    if (rateLimitCheck.isLocked) {
+      const minutes = Math.ceil(rateLimitCheck.remainingTime / 60);
+      return {
+        success: false,
+        user: null,
+        message: `Account bloccato. Riprova tra ${minutes} minuto${minutes !== 1 ? 'i' : ''}.`
+      };
+    }
+    
     // Cerca utente
     const user = UserManager.getByUsername(username);
     
     if (!user) {
+      // RATE LIMITING: Registra tentativo fallito
+      this._recordFailedAttempt(username);
       return { success: false, user: null, message: 'Credenziali non valide' };
     }
     
     // Verifica utente attivo
     if (!user.isActive) {
+      // RATE LIMITING: Registra tentativo fallito
+      this._recordFailedAttempt(username);
       return { success: false, user: null, message: 'Account disattivato' };
     }
     
     // Verifica password con PasswordHash (sicurezza timing-safe)
     if (!PasswordHash.verify(password, user.password)) {
-      return { success: false, user: null, message: 'Credenziali non valide' };
+      // RATE LIMITING: Registra tentativo fallito
+      this._recordFailedAttempt(username);
+      const attempts = this.loginAttempts[username];
+      const remainingAttempts = this.MAX_ATTEMPTS - attempts.count;
+      
+      return {
+        success: false,
+        user: null,
+        message: `Credenziali non valide (${remainingAttempts} tentativo${remainingAttempts !== 1 ? 'i' : ''} rimasto${remainingAttempts !== 1 ? 'i' : ''})`
+      };
     }
+    
+    // RATE LIMITING: Reset tentativi dopo successo
+    this._resetAttempts(username);
     
     // Login successful
     this.currentUser = user;
