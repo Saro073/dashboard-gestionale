@@ -17,7 +17,10 @@ const CONFIG = {
     ACTIVITY_LOG: 'dashboard_activity_log',
     THEME: 'dashboard_theme',
     BOOKINGS: 'dashboard_bookings',
-    ACCOUNTING: 'dashboard_accounting'
+    ACCOUNTING: 'dashboard_accounting',
+    PROPERTIES: 'dashboard_properties',
+    CLEANING: 'dashboard_cleaning',
+    MAINTENANCE: 'dashboard_maintenance'
   },  
   // Ruoli utente
   ROLES: {

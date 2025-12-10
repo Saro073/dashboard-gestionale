@@ -69,6 +69,9 @@ const BookingsModule = {
     const booking = {
       id: Utils.generateId(),
       
+      // Property ID - usa default se non specificato
+      propertyId: data.propertyId || (PropertiesModule && PropertiesModule.getDefault ? PropertiesModule.getDefault().id : null),
+      
       // Link a contatto (opzionale)
       contactId: data.contactId || null,
       
@@ -339,9 +342,10 @@ const BookingsModule = {
    * @param {string} checkIn
    * @param {string} checkOut
    * @param {number} excludeId - ID da escludere (per update)
+   * @param {number} propertyId - ID property da verificare (opzionale)
    * @returns {boolean}
    */
-  isAvailable(checkIn, checkOut, excludeId = null) {
+  isAvailable(checkIn, checkOut, excludeId = null, propertyId = null) {
     const bookings = this.getAll();
     const start = new Date(checkIn);
     const end = new Date(checkOut);
@@ -349,6 +353,9 @@ const BookingsModule = {
     for (const booking of bookings) {
       if (excludeId && booking.id === excludeId) continue;
       if (booking.status === this.STATUS.CANCELLED) continue;
+      
+      // Filtra per property se specificata
+      if (propertyId && booking.propertyId !== propertyId) continue;
 
       const bStart = new Date(booking.checkIn);
       const bEnd = new Date(booking.checkOut);
@@ -398,7 +405,18 @@ const BookingsModule = {
   },
 
   /**
-   * Ottiene prossimi check-in
+   * Filtra bookings per property specifica (opzionale)
+   * @param {Array} bookings - Array di bookings da filtrare
+   * @param {number} propertyId - ID property (null = tutte)
+   * @returns {Array}
+   */
+  filterByProperty(bookings, propertyId = null) {
+    if (!propertyId) return bookings; // null = mostra tutte
+    return bookings.filter(b => b.propertyId === propertyId);
+  },
+
+  /**
+   * Prossimi check-in
    * @param {number} days
    * @returns {Array}
    */

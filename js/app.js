@@ -27,6 +27,11 @@ class DashboardApp {
     // Inizializza autenticazione
     AuthManager.init();
     
+    // Inizializza properties e migrazione dati
+    if (PropertiesModule && typeof PropertiesModule.migrateExistingData === 'function') {
+      PropertiesModule.migrateExistingData();
+    }
+    
     // Inizializza categorie con defaults e migrazione
     if (CategoryManager && typeof CategoryManager.initializeDefaults === 'function') {
       CategoryManager.initializeDefaults();
@@ -128,6 +133,22 @@ class DashboardApp {
       this.updateStats();
       this.renderAccounting();
     });
+
+    // Properties - ricarica liste quando cambiano
+    EventBus.on(EVENTS.PROPERTY_CREATED, () => {
+      this.updatePropertyFilter();
+      this.renderProperties();
+      this.updateStats();
+    });
+    EventBus.on(EVENTS.PROPERTY_UPDATED, () => {
+      this.updatePropertyFilter();
+      this.renderProperties();
+    });
+    EventBus.on(EVENTS.PROPERTY_DELETED, () => {
+      this.updatePropertyFilter();
+      this.renderProperties();
+      this.updateStats();
+    });
   }
   
   /**
@@ -150,6 +171,9 @@ class DashboardApp {
     
     // Inizializza router
     Router.init();
+    
+    // Inizializza property filter
+    this.initializePropertyFilter();
     
     // Carica dati e render
     this.loadData();
@@ -254,6 +278,9 @@ class DashboardApp {
     
     // Settings
     this.setupSettingsListeners();
+    
+    // Properties
+    this.setupPropertiesListeners();
     
     // Activity Log
     this.setupActivityLogListeners();
@@ -366,6 +393,7 @@ class DashboardApp {
     this.renderAccounting();
     this.renderAnalytics();
     this.renderSettings();
+    this.renderProperties();
     this.renderRecentActivity();
     this.renderActivityLog();
     
@@ -3535,6 +3563,205 @@ class DashboardApp {
       AutoBackupService.deleteAutoBackup(id);
       this.renderAutoBackupList();
       this.renderAutoBackupStats();
+    }
+  }
+
+  // ==================== PROPERTIES ====================
+
+  /**
+   * Inizializza property filter (dropdown opzionale)
+   */
+  initializePropertyFilter() {
+    this.currentPropertyFilter = null; // null = tutte le properties
+    this.updatePropertyFilter();
+    
+    // Listener per cambio filtro
+    const selector = document.getElementById('propertySelector');
+    if (selector) {
+      selector.addEventListener('change', (e) => {
+        const value = e.target.value;
+        this.currentPropertyFilter = value === 'all' ? null : parseInt(value);
+        
+        // Ricarica viste filtrate
+        this.renderBookings();
+        this.renderCleaning();
+        this.renderMaintenance();
+      });
+    }
+  }
+
+  /**
+   * Aggiorna property filter dropdown
+   */
+  updatePropertyFilter() {
+    const selector = document.getElementById('propertySelector');
+    if (!selector || !PropertiesModule) return;
+    
+    const properties = PropertiesModule.getAll();
+    
+    let html = '<option value="all">📊 Tutte le Proprietà</option>';
+    properties.forEach(p => {
+      const selected = this.currentPropertyFilter === p.id ? 'selected' : '';
+      html += `<option value="${p.id}" ${selected}>${p.name}</option>`;
+    });
+    
+    selector.innerHTML = html;
+  }
+
+  /**
+   * Setup properties listeners
+   */
+  setupPropertiesListeners() {
+    // Add property button
+    document.getElementById('addPropertyBtn')?.addEventListener('click', () => {
+      this.openPropertyModal();
+    });
+    
+    // Property form submit
+    document.getElementById('propertyForm')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.saveProperty();
+    });
+  }
+
+  /**
+   * Render properties list
+   */
+  renderProperties() {
+    const container = document.getElementById('propertiesList');
+    if (!container || !PropertiesModule) return;
+    
+    const properties = PropertiesModule.getAll();
+    
+    if (properties.length === 0) {
+      container.innerHTML = '<p class="text-secondary">Nessuna proprietà. Creane una per iniziare.</p>';
+      return;
+    }
+    
+    container.innerHTML = properties.map(property => {
+      const stats = PropertiesModule.getStats(property.id);
+      
+      return `
+        <div class="property-card">
+          <div class="property-info">
+            <div class="property-color-badge" style="background-color: ${property.color}"></div>
+            <div class="property-details">
+              <h3>${Utils.escapeHtml(property.name)}</h3>
+              <p>${property.address.city || 'Indirizzo non specificato'}</p>
+            </div>
+          </div>
+          <div class="property-stats">
+            <div class="property-stat">
+              <span class="property-stat-value">${stats.totalBookings}</span>
+              <span class="property-stat-label">Prenotazioni</span>
+            </div>
+            <div class="property-stat">
+              <span class="property-stat-value">€${stats.totalRevenue.toLocaleString()}</span>
+              <span class="property-stat-label">Revenue</span>
+            </div>
+          </div>
+          <div class="property-actions">
+            <button class="btn btn-secondary btn-sm" onclick="app.editProperty(${property.id})">✏️ Modifica</button>
+            <button class="btn btn-danger btn-sm" onclick="app.deleteProperty(${property.id})">🗑️ Elimina</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  /**
+   * Open property modal
+   */
+  openPropertyModal(propertyId = null) {
+    const modal = document.getElementById('propertyModal');
+    const title = document.getElementById('propertyModalTitle');
+    const form = document.getElementById('propertyForm');
+    
+    if (!modal || !form) return;
+    
+    form.reset();
+    
+    if (propertyId) {
+      // Edit mode
+      const property = PropertiesModule.getById(propertyId);
+      if (!property) return;
+      
+      title.textContent = 'Modifica Proprietà';
+      document.getElementById('propertyName').value = property.name;
+      document.getElementById('propertyDescription').value = property.description || '';
+      document.getElementById('propertyStreet').value = property.address?.street || '';
+      document.getElementById('propertyCity').value = property.address?.city || '';
+      document.getElementById('propertyZip').value = property.address?.zip || '';
+      document.getElementById('propertyCountry').value = property.address?.country || 'Italia';
+      document.getElementById('propertyColor').value = property.color || '#3b82f6';
+      
+      form.dataset.editId = propertyId;
+    } else {
+      // Create mode
+      title.textContent = 'Nuova Proprietà';
+      delete form.dataset.editId;
+    }
+    
+    modal.classList.add('active');
+  }
+
+  /**
+   * Save property
+   */
+  saveProperty() {
+    const form = document.getElementById('propertyForm');
+    if (!form || !PropertiesModule) return;
+    
+    const data = {
+      name: document.getElementById('propertyName').value,
+      description: document.getElementById('propertyDescription').value,
+      address: {
+        street: document.getElementById('propertyStreet').value,
+        city: document.getElementById('propertyCity').value,
+        zip: document.getElementById('propertyZip').value,
+        country: document.getElementById('propertyCountry').value
+      },
+      color: document.getElementById('propertyColor').value
+    };
+    
+    let result;
+    if (form.dataset.editId) {
+      // Update
+      result = PropertiesModule.update(parseInt(form.dataset.editId), data);
+    } else {
+      // Create
+      result = PropertiesModule.create(data);
+    }
+    
+    if (result.success) {
+      document.getElementById('propertyModal').classList.remove('active');
+      this.renderProperties();
+      this.updatePropertyFilter();
+    }
+  }
+
+  /**
+   * Edit property
+   */
+  editProperty(id) {
+    this.openPropertyModal(id);
+  }
+
+  /**
+   * Delete property
+   */
+  deleteProperty(id) {
+    if (!PropertiesModule) return;
+    
+    const property = PropertiesModule.getById(id);
+    if (!property) return;
+    
+    if (confirm(`Eliminare la proprietà "${property.name}"? Questa azione eliminerà anche tutte le prenotazioni associate.`)) {
+      const result = PropertiesModule.delete(id);
+      if (result.success) {
+        this.renderProperties();
+        this.updatePropertyFilter();
+      }
     }
   }
 }
