@@ -386,16 +386,7 @@ textarea {
   margin-bottom: 0;
 }
 
-/* Form Row for side-by-side inputs */
-.form-row {
-  display: flex;
-  gap: 0.75rem;
-  margin-bottom: 0;
-}
 
-.form-row .form-group {
-  margin-bottom: 0.65rem;
-}
 
 /* Form Group Section (for grouping related fields) */
 .form-group-section {
@@ -1912,11 +1903,6 @@ textarea {
   transition: all 0.2s;
 }
 
-.next-week-day:hover {
-  border-color: var(--primary-color);
-  transform: translateY(-2px);
-}
-
 .next-week-day.has-booking {
   background: var(--success-color);
   color: white;
@@ -3107,9 +3093,6 @@ textarea {
 }
 
 /* ==================== CSV IMPORT MODAL ==================== */
-.modal-large {
-  max-width: 800px;
-}
 
 .import-instructions {
   background: var(--bg-color);
