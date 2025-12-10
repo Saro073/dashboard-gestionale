@@ -1522,15 +1522,38 @@ class DashboardApp {
   saveTransaction(e) {
     e.preventDefault();
     
+    const amount = parseFloat(document.getElementById('transactionAmount').value);
+    const category = document.getElementById('transactionCategory').value;
+    const date = document.getElementById('transactionDate').value;
+    const description = document.getElementById('transactionDescription').value.trim();
+
+    // ✅ VALIDATION: Required fields
+    if (!date) {
+      NotificationService.error('Data transazione è obbligatoria');
+      return;
+    }
+    if (!category) {
+      NotificationService.error('Categoria è obbligatoria');
+      return;
+    }
+    if (!description) {
+      NotificationService.error('Descrizione è obbligatoria');
+      return;
+    }
+    if (isNaN(amount) || amount <= 0) {
+      NotificationService.error('Importo deve essere maggiore di zero');
+      return;
+    }
+    
     const transactionData = {
       type: document.getElementById('transactionType').value,
-      amount: document.getElementById('transactionAmount').value,
-      category: document.getElementById('transactionCategory').value,
-      date: document.getElementById('transactionDate').value,
-      description: document.getElementById('transactionDescription').value,
+      amount,
+      category,
+      date,
+      description,
       paymentMethod: document.getElementById('transactionPaymentMethod').value,
-      receiptNumber: document.getElementById('transactionReceiptNumber').value,
-      notes: document.getElementById('transactionNotes').value
+      receiptNumber: document.getElementById('transactionReceiptNumber').value.trim(),
+      notes: document.getElementById('transactionNotes').value.trim()
     };
     
     let result;
@@ -2202,16 +2225,29 @@ class DashboardApp {
   saveCleaning(e) {
     e.preventDefault();
     
+    const scheduledDate = document.getElementById('cleaningDate').value;
+    const cost = parseFloat(document.getElementById('cleaningCost').value);
+
+    // ✅ VALIDATION: Required fields
+    if (!scheduledDate) {
+      NotificationService.error('Data pulizia è obbligatoria');
+      return;
+    }
+    if (isNaN(cost) || cost < 0) {
+      NotificationService.error('Costo non valido (deve essere >= 0)');
+      return;
+    }
+    
     const cleaningData = {
-      scheduledDate: document.getElementById('cleaningDate').value,
+      scheduledDate,
       scheduledTime: document.getElementById('cleaningTime').value,
-      guestName: document.getElementById('cleaningGuestName').value,
+      guestName: document.getElementById('cleaningGuestName').value.trim(),
       bookingId: document.getElementById('cleaningBookingId').value || null,
       assignedTo: document.getElementById('cleaningAssignedTo').value || null,
       priority: document.getElementById('cleaningPriority').value,
       estimatedDuration: parseInt(document.getElementById('cleaningDuration').value),
-      cost: parseFloat(document.getElementById('cleaningCost').value),
-      notes: document.getElementById('cleaningNotes').value
+      cost,
+      notes: document.getElementById('cleaningNotes').value.trim()
     };
     
     try {
@@ -2512,15 +2548,33 @@ class DashboardApp {
   async saveMaintenance(e) {
     e.preventDefault();
     
+    const description = document.getElementById('maintenanceDescription').value.trim();
+    const requestDate = document.getElementById('maintenanceRequestDate').value;
+    const estimatedCost = parseFloat(document.getElementById('maintenanceEstimatedCost').value) || 0;
+
+    // ✅ VALIDATION: Required fields
+    if (!description) {
+      NotificationService.error('Descrizione intervento è obbligatoria');
+      return;
+    }
+    if (!requestDate) {
+      NotificationService.error('Data richiesta è obbligatoria');
+      return;
+    }
+    if (estimatedCost < 0) {
+      NotificationService.error('Costo stimato non valido');
+      return;
+    }
+    
     const maintenanceData = {
       category: document.getElementById('maintenanceCategory').value,
       priority: document.getElementById('maintenancePriority').value,
-      description: document.getElementById('maintenanceDescription').value,
-      requestDate: document.getElementById('maintenanceRequestDate').value,
+      description,
+      requestDate,
       scheduledDate: document.getElementById('maintenanceScheduledDate').value || null,
       assignedTo: document.getElementById('maintenanceAssignedTo').value || null,
-      estimatedCost: parseFloat(document.getElementById('maintenanceEstimatedCost').value) || 0,
-      notes: document.getElementById('maintenanceNotes').value
+      estimatedCost,
+      notes: document.getElementById('maintenanceNotes').value.trim()
     };
     
     try {
@@ -2883,15 +2937,16 @@ class DashboardApp {
   }
   
   saveContact() {
-    const firstName = document.getElementById('contactFirstName').value;
-    const lastName = document.getElementById('contactLastName').value;
-    const company = document.getElementById('contactCompany').value;
+    const firstName = document.getElementById('contactFirstName').value.trim();
+    const lastName = document.getElementById('contactLastName').value.trim();
+    const company = document.getElementById('contactCompany').value.trim();
     const category = document.getElementById('contactCategory').value.trim();
-    const notes = document.getElementById('contactNotes').value;
+    const notes = document.getElementById('contactNotes').value.trim();
 
-    // Aggiungi nuova categoria se non esiste
-    if (category && !CategoryManager.exists(category)) {
-      CategoryManager.add(category);
+    // ✅ VALIDATION: Required fields
+    if (!firstName) {
+      NotificationService.error('Nome è obbligatorio');
+      return;
     }
 
     const emails = Array.from(document.querySelectorAll('#emailsContainer .multi-input-row')).map(row => ({
@@ -2899,10 +2954,23 @@ class DashboardApp {
       label: row.querySelector('.email-label').value.trim()
     })).filter(e => e.value || e.label);
 
+    // ✅ VALIDATION: Email format
+    for (const email of emails) {
+      if (email.value && !Utils.validateEmail(email.value)) {
+        NotificationService.error(`Email non valida: ${email.value}`);
+        return;
+      }
+    }
+
     const phones = Array.from(document.querySelectorAll('#phonesContainer .multi-input-row')).map(row => ({
       value: row.querySelector('.phone-value').value.trim(),
       label: row.querySelector('.phone-label').value.trim()
     })).filter(p => p.value || p.label);
+
+    // Aggiungi nuova categoria se non esiste
+    if (category && !CategoryManager.exists(category)) {
+      CategoryManager.add(category);
+    }
 
     const address = {
       street: document.getElementById('contactAddressStreet').value.trim(),

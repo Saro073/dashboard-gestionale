@@ -430,6 +430,36 @@ const BookingsHandlers = {
     const lastName = document.getElementById('bookingGuestLastName').value.trim();
     const email = document.getElementById('bookingGuestEmail').value.trim();
     const phone = document.getElementById('bookingGuestPhone').value.trim();
+    const checkIn = document.getElementById('bookingCheckIn').value;
+    const checkOut = document.getElementById('bookingCheckOut').value;
+    const totalAmount = parseFloat(document.getElementById('bookingTotalAmount').value);
+    const deposit = parseFloat(document.getElementById('bookingDeposit').value);
+
+    // ✅ VALIDATION: Required fields
+    if (!firstName) {
+      NotificationService.error('Nome ospite è obbligatorio');
+      return;
+    }
+    if (!checkIn || !checkOut) {
+      NotificationService.error('Date check-in/out sono obbligatorie');
+      return;
+    }
+    if (new Date(checkOut) <= new Date(checkIn)) {
+      NotificationService.error('Check-out deve essere dopo check-in');
+      return;
+    }
+    if (email && !Utils.validateEmail(email)) {
+      NotificationService.error('Email non valida');
+      return;
+    }
+    if (isNaN(totalAmount) || totalAmount < 0) {
+      NotificationService.error('Importo totale non valido');
+      return;
+    }
+    if (isNaN(deposit) || deposit < 0) {
+      NotificationService.error('Caparra non valida');
+      return;
+    }
     
     // Raccogli indirizzo privato
     const privateAddress = {
@@ -470,12 +500,12 @@ const BookingsHandlers = {
       guestPhone: phone,
       guestPrivateAddress: privateAddress,
       guestBusinessAddress: businessAddress,
-      checkIn: document.getElementById('bookingCheckIn').value,
-      checkOut: document.getElementById('bookingCheckOut').value,
+      checkIn,
+      checkOut,
       guests: parseInt(document.getElementById('bookingGuests').value),
       channel: document.getElementById('bookingChannel').value,
-      totalAmount: parseFloat(document.getElementById('bookingTotalAmount').value),
-      deposit: parseFloat(document.getElementById('bookingDeposit').value),
+      totalAmount,
+      deposit,
       status: document.getElementById('bookingStatus').value,
       isPaid: document.getElementById('bookingIsPaid').checked,
       notes: document.getElementById('bookingNotes').value
