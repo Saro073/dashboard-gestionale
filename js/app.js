@@ -52,8 +52,11 @@ class DashboardApp {
       CategoryManager.migrateFromContacts();
     }
     
-    // Verifica autenticazione
-    if (AuthManager.isAuthenticated()) {
+    // Verifica se nessun utente esiste (primo accesso) - mostra setup form
+    const users = UserManager.getAll();
+    if (users.length === 0) {
+      this.showSetup();
+    } else if (AuthManager.isAuthenticated()) {
       this.showDashboard();
     } else {
       this.showLogin();
@@ -164,6 +167,7 @@ class DashboardApp {
    */
   showDashboard() {
     document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('setupScreen').style.display = 'none';
     document.getElementById('dashboard').style.display = 'flex';
     
     const user = AuthManager.getCurrentUser();
@@ -185,6 +189,19 @@ class DashboardApp {
     // Mostra notifica di benvenuto
     NotificationService.success(`Benvenuto, ${user.fullName || user.username}!`);
   }
+
+  /**
+   * Mostra setup form (first-user creation)
+   */
+  showSetup() {
+    document.getElementById('setupScreen').style.display = 'flex';
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'none';
+    // Clear any previous form data and errors
+    document.getElementById('setupForm').reset();
+    document.getElementById('setupError').style.display = 'none';
+    document.getElementById('setupSuccess').style.display = 'none';
+  }
   
   /**
    * Setup event listeners
@@ -195,6 +212,15 @@ class DashboardApp {
       e.preventDefault();
       this.handleLogin();
     });
+    
+    // Setup (First-user creation)
+    const setupForm = document.getElementById('setupForm');
+    if (setupForm) {
+      setupForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        this.handleSetup();
+      });
+    }
     
     // Logout
     document.getElementById('logoutBtn').addEventListener('click', () => {
@@ -377,6 +403,134 @@ class DashboardApp {
     AuthManager.logout();
     NotificationService.info('Logout effettuato');
     this.showLogin();
+  }
+
+  /**
+   * Handle first-user setup
+   */
+  handleSetup() {
+    const username = document.getElementById('setupUsername').value.trim();
+    const fullName = document.getElementById('setupFullName').value.trim();
+    const email = document.getElementById('setupEmail').value.trim();
+    const password = document.getElementById('setupPassword').value;
+    const passwordConfirm = document.getElementById('setupPasswordConfirm').value;
+    const errorDiv = document.getElementById('setupError');
+    const successDiv = document.getElementById('setupSuccess');
+
+    // Reset messages
+    errorDiv.style.display = 'none';
+    successDiv.style.display = 'none';
+    errorDiv.textContent = '';
+
+    // Validation: Username
+    if (!username || username.length < 3) {
+      errorDiv.textContent = 'Nome utente deve avere almeno 3 caratteri';
+      errorDiv.style.display = 'block';
+      NotificationService.error(errorDiv.textContent);
+      return;
+    }
+
+    // Validation: Full Name
+    if (!fullName) {
+      errorDiv.textContent = 'Nome completo è obbligatorio';
+      errorDiv.style.display = 'block';
+      NotificationService.error(errorDiv.textContent);
+      return;
+    }
+
+    // Validation: Email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(email)) {
+      errorDiv.textContent = 'Email non valida';
+      errorDiv.style.display = 'block';
+      NotificationService.error(errorDiv.textContent);
+      return;
+    }
+
+    // Validation: Password requirements
+    if (!password || password.length < 8) {
+      errorDiv.textContent = 'Password deve avere almeno 8 caratteri';
+      errorDiv.style.display = 'block';
+      NotificationService.error(errorDiv.textContent);
+      return;
+    }
+
+    if (!/[A-Z]/.test(password)) {
+      errorDiv.textContent = 'Password deve contenere almeno una lettera maiuscola';
+      errorDiv.style.display = 'block';
+      NotificationService.error(errorDiv.textContent);
+      return;
+    }
+
+    if (!/\d/.test(password)) {
+      errorDiv.textContent = 'Password deve contenere almeno un numero';
+      errorDiv.style.display = 'block';
+      NotificationService.error(errorDiv.textContent);
+      return;
+    }
+
+    // Validation: Password confirmation
+    if (password !== passwordConfirm) {
+      errorDiv.textContent = 'Le password non corrispondono';
+      errorDiv.style.display = 'block';
+      NotificationService.error(errorDiv.textContent);
+      return;
+    }
+
+    // Check if username already exists
+    const existingUser = UserManager.getByUsername(username);
+    if (existingUser) {
+      errorDiv.textContent = 'Nome utente già in uso';
+      errorDiv.style.display = 'block';
+      NotificationService.error(errorDiv.textContent);
+      return;
+    }
+
+    // Create admin user
+    try {
+      const result = UserManager.create({
+        username,
+        fullName,
+        email,
+        password,
+        role: CONFIG.ROLES.ADMIN
+      });
+
+      if (!result.success) {
+        errorDiv.textContent = result.message || 'Errore durante la creazione dell\'utente';
+        errorDiv.style.display = 'block';
+        NotificationService.error(errorDiv.textContent);
+        return;
+      }
+
+      // Clear any previous login attempts for this username
+      AuthManager._resetAttempts(username);
+
+      // Auto-login with the new admin user
+      const loginResult = AuthManager.login(username, password);
+      
+      if (loginResult.success) {
+        // Show success message
+        successDiv.textContent = 'Account amministratore creato con successo! Accesso in corso...';
+        successDiv.style.display = 'block';
+        
+        // Clear form
+        document.getElementById('setupForm').reset();
+        
+        // Redirect to dashboard after brief delay
+        setTimeout(() => {
+          this.showDashboard();
+        }, 1500);
+      } else {
+        errorDiv.textContent = 'Account creato ma login fallito: ' + loginResult.message;
+        errorDiv.style.display = 'block';
+        NotificationService.error(errorDiv.textContent);
+      }
+    } catch (error) {
+      ErrorHandler.handle(error, 'DashboardApp.handleSetup', true);
+      errorDiv.textContent = 'Errore durante la creazione dell\'account: ' + error.message;
+      errorDiv.style.display = 'block';
+    }
   }
   
   /**

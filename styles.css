@@ -109,6 +109,22 @@ a:hover {
   color: var(--text-primary);
 }
 
+#setupForm .form-group small {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+}
+
+.success-message {
+  background: #dcfce7;
+  color: #166534;
+  padding: 0.75rem;
+  border-radius: var(--radius-md);
+  margin-top: 1rem;
+  font-size: 0.875rem;
+  text-align: center;
+}
+
 /* ==================== DASHBOARD LAYOUT ==================== */
 .dashboard-container {
   display: flex;

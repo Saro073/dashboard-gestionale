@@ -30,6 +30,45 @@
         </div>
     </div>
 
+    <!-- First User Setup Screen (shown if no users exist) -->
+    <div id="setupScreen" class="login-container" style="display: none;">
+        <div class="login-box">
+            <h1>🔐 Primo Accesso - Configura Admin</h1>
+            <p style="color: #666; text-align: center; margin-bottom: 1.5rem; font-size: 0.9rem;">
+                Nessun account trovato. Crea il primo account amministratore.
+            </p>
+            <form id="setupForm">
+                <div class="form-group">
+                    <label for="setupUsername">Username</label>
+                    <input type="text" id="setupUsername" required placeholder="admin" autocomplete="off">
+                    <small style="color: #666;">Username per il login (min 3 caratteri)</small>
+                </div>
+                <div class="form-group">
+                    <label for="setupFullName">Nome Completo</label>
+                    <input type="text" id="setupFullName" required placeholder="Amministratore" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="setupEmail">Email</label>
+                    <input type="email" id="setupEmail" required placeholder="admin@example.com" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="setupPassword">Password</label>
+                    <input type="password" id="setupPassword" required placeholder="Min 8 caratteri con maiuscole e numeri" autocomplete="off">
+                    <small style="color: #666;">Almeno 8 caratteri, 1 maiuscola, 1 numero</small>
+                </div>
+                <div class="form-group">
+                    <label for="setupPasswordConfirm">Conferma Password</label>
+                    <input type="password" id="setupPasswordConfirm" required autocomplete="off">
+                </div>
+                <button type="submit" class="btn btn-primary btn-full-width">Crea Account Admin</button>
+                <div id="setupError" class="error-message"></div>
+                <div id="setupSuccess" class="success-message" style="display: none;">
+                    Account creato! Effettuando login...
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Main Dashboard -->
     <div id="dashboard" class="dashboard-container" >
         <!-- Sidebar Overlay for Mobile -->
