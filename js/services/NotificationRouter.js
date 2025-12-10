@@ -7,7 +7,8 @@
  * - Ruoli target
  * - Preferenze canali (Telegram/Email)
  * 
- * Pattern estendibile per futuri canali (SMS, WhatsApp, Push)
+ * Pattern: send() è SINCRONO (non bloccante, fire-and-forget)
+ * Le notifiche vengono inviate in background senza attendere
  */
 
 const NotificationRouter = {
@@ -21,9 +22,11 @@ const NotificationRouter = {
     CHECKIN_TODAY: 'checkin_today',
     CHECKOUT_TODAY: 'checkout_today',
     CLEANING_CREATED: 'cleaning_created',
+    CLEANING_COMPLETED: 'cleaning_completed',
     CLEANING_REMINDER: 'cleaning_reminder',
     MAINTENANCE_CREATED: 'maintenance_created',
     MAINTENANCE_URGENT: 'maintenance_urgent',
+    MAINTENANCE_COMPLETED: 'maintenance_completed',
     EMERGENCY: 'emergency'
   },
 
@@ -48,7 +51,9 @@ const NotificationRouter = {
   },
 
   /**
-   * Invia notifica smart routing
+   * Invia notifica smart routing - SINCRONO (non bloccante)
+   * Le notifiche vengono inviate in background
+   * 
    * @param {object} options
    * @param {string} options.event - Tipo evento (EVENTS.*)
    * @param {number} options.propertyId - ID property
@@ -56,9 +61,9 @@ const NotificationRouter = {
    * @param {array} options.channels - Canali da usare ['telegram', 'email']
    * @param {object} options.data - Dati payload notifica
    * @param {string} options.message - Messaggio custom (opzionale)
-   * @returns {object} - {success: boolean, sent: {telegram: number, email: number}, errors: []}
+   * @returns {object} - {success: boolean, scheduled: number}
    */
-  async send(options) {
+  send(options) {
     try {
       const {
         event,
@@ -71,66 +76,58 @@ const NotificationRouter = {
 
       // Validazione
       if (!event) {
-        throw new Error('Event type richiesto');
+        console.error('[NotificationRouter] Event type richiesto');
+        return { success: false, scheduled: 0 };
       }
       if (!propertyId) {
-        throw new Error('PropertyId richiesto');
+        console.error('[NotificationRouter] PropertyId richiesto');
+        return { success: false, scheduled: 0 };
       }
 
       // Ottieni property
       const property = PropertiesModule?.getById(propertyId);
       if (!property) {
-        throw new Error(`Property ${propertyId} non trovata`);
+        console.warn(`[NotificationRouter] Property ${propertyId} non trovata`);
+        return { success: false, scheduled: 0 };
       }
 
       // Raccogli contatti target
       const targetContacts = this.resolveTargetContacts(property, targetRoles);
       
       if (targetContacts.length === 0) {
-        console.warn(`[NotificationRouter] Nessun contatto trovato per property ${property.name}, roles: ${targetRoles.join(', ')}`);
-        return { success: true, sent: { telegram: 0, email: 0 }, errors: [], warning: 'No contacts found' };
+        console.warn(`[NotificationRouter] Nessun contatto per property ${property.name}, roles: ${targetRoles.join(', ')}`);
+        return { success: true, scheduled: 0 };
       }
 
       // Genera messaggio se non fornito
       const messageText = message || this.generateMessage(event, data, property);
 
-      // Invia notifiche
-      const results = {
-        telegram: 0,
-        email: 0,
-        errors: []
-      };
-
-      for (const contact of targetContacts) {
-        // Telegram
+      // Invia notifiche in background (fuori dal flusso principale)
+      // Non attendiamo il completamento - torna subito
+      targetContacts.forEach(contact => {
+        // Telegram - async, non bloccante
         if (channels.includes(this.CHANNELS.TELEGRAM)) {
-          const telegramSent = await this.sendTelegram(contact, messageText, data);
-          if (telegramSent.success) results.telegram++;
-          else if (telegramSent.error) results.errors.push(telegramSent.error);
+          this._sendTelegramAsync(contact, messageText, data);
         }
 
-        // Email
+        // Email - async, non bloccante
         if (channels.includes(this.CHANNELS.EMAIL)) {
-          const emailSent = await this.sendEmail(contact, messageText, data, event);
-          if (emailSent.success) results.email++;
-          else if (emailSent.error) results.errors.push(emailSent.error);
+          this._sendEmailAsync(contact, messageText, data, event);
         }
-      }
+      });
 
-      console.log(`[NotificationRouter] Event: ${event}, Property: ${property.name}, Sent: ${results.telegram} telegram, ${results.email} email`);
+      console.log(`[NotificationRouter] ${event}: Scheduled ${targetContacts.length} notifications for ${property.name}`);
 
       return {
         success: true,
-        sent: { telegram: results.telegram, email: results.email },
-        errors: results.errors
+        scheduled: targetContacts.length
       };
 
     } catch (error) {
-      console.error('[NotificationRouter] Error:', error);
+      console.error('[NotificationRouter] Error in send():', error);
       return {
         success: false,
-        sent: { telegram: 0, email: 0 },
-        errors: [error.message]
+        scheduled: 0
       };
     }
   },
@@ -206,78 +203,79 @@ const NotificationRouter = {
   },
 
   /**
-   * Invia notifica Telegram a contatto
-   * @param {object} contact
-   * @param {string} message
-   * @param {object} data
-   * @returns {object} - {success: boolean, error: string}
+   * Invia Telegram in background (async, non bloccante)
+   * @private
    */
-  async sendTelegram(contact, message, data) {
-    try {
-      // Controlla preferenze
-      if (!contact.notificationPreferences?.telegram?.enabled) {
-        return { success: false, error: null };  // Silently skip
+  _sendTelegramAsync(contact, message, data) {
+    // Esegui in background usando setTimeout per uscire dal call stack
+    setTimeout(async () => {
+      try {
+        // Controlla preferenze
+        if (!contact.notificationPreferences?.telegram?.enabled) {
+          return;
+        }
+
+        const chatId = contact.notificationPreferences.telegram.chatId;
+        if (!chatId) {
+          console.warn(`[NotificationRouter] Telegram chatId mancante per ${contact.firstName} ${contact.lastName}`);
+          return;
+        }
+
+        // Verifica TelegramService configurato
+        if (!TelegramService || !TelegramService.isConfigured()) {
+          console.warn('[NotificationRouter] TelegramService non configurato');
+          return;
+        }
+
+        // Invia
+        await TelegramService.sendMessage(message, { chatId, ...data });
+
+      } catch (error) {
+        console.error('[NotificationRouter] Telegram send error:', error);
       }
-
-      const chatId = contact.notificationPreferences.telegram.chatId;
-      if (!chatId) {
-        return { success: false, error: `Telegram chatId mancante per ${contact.name}` };
-      }
-
-      // Verifica TelegramService configurato
-      if (!TelegramService || !TelegramService.isConfigured()) {
-        return { success: false, error: 'TelegramService non configurato' };
-      }
-
-      // Invia
-      const result = await TelegramService.sendMessage(message, { chatId, ...data });
-      return { success: result.success, error: result.error };
-
-    } catch (error) {
-      return { success: false, error: `Telegram error: ${error.message}` };
-    }
+    }, 0);
   },
 
   /**
-   * Invia notifica Email a contatto
-   * @param {object} contact
-   * @param {string} message
-   * @param {object} data
-   * @param {string} event
-   * @returns {object} - {success: boolean, error: string}
+   * Invia Email in background (async, non bloccante)
+   * @private
    */
-  async sendEmail(contact, message, data, event) {
-    try {
-      // Controlla preferenze
-      if (!contact.notificationPreferences?.email?.enabled) {
-        return { success: false, error: null };  // Silently skip
+  _sendEmailAsync(contact, message, data, event) {
+    // Esegui in background usando setTimeout per uscire dal call stack
+    setTimeout(async () => {
+      try {
+        // Controlla preferenze
+        if (!contact.notificationPreferences?.email?.enabled) {
+          return;
+        }
+
+        const emailAddress = contact.notificationPreferences.email.address;
+        if (!emailAddress) {
+          console.warn(`[NotificationRouter] Email mancante per ${contact.firstName} ${contact.lastName}`);
+          return;
+        }
+
+        // Verifica EmailService configurato
+        if (!EmailService || !EmailService.isConfigured()) {
+          console.warn('[NotificationRouter] EmailService non configurato');
+          return;
+        }
+
+        // Subject basato su evento
+        const subject = this.getEmailSubject(event, data);
+
+        // Invia
+        await EmailService.send(
+          emailAddress,
+          subject,
+          message,
+          data
+        );
+
+      } catch (error) {
+        console.error('[NotificationRouter] Email send error:', error);
       }
-
-      const emailAddress = contact.notificationPreferences.email.address;
-      if (!emailAddress) {
-        return { success: false, error: `Email mancante per ${contact.name}` };
-      }
-
-      // Verifica EmailService configurato
-      if (!EmailService || !EmailService.isConfigured()) {
-        return { success: false, error: 'EmailService non configurato' };
-      }
-
-      // Subject basato su evento
-      const subject = this.getEmailSubject(event, data);
-
-      // Invia
-      const result = await EmailService.send(
-        emailAddress,
-        subject,
-        message,
-        data
-      );
-      return { success: result.success, error: result.error };
-
-    } catch (error) {
-      return { success: false, error: `Email error: ${error.message}` };
-    }
+    }, 0);
   },
 
   /**
@@ -294,14 +292,23 @@ const NotificationRouter = {
       case this.EVENTS.BOOKING_CREATED:
         return `🏠 ${propertyName}\n📅 Nuova prenotazione\n\nOspite: ${data.guestName}\nCheck-in: ${data.checkIn}\nCheck-out: ${data.checkOut}\n${data.notes ? `\nNote: ${data.notes}` : ''}`;
 
+      case this.EVENTS.BOOKING_CANCELLED:
+        return `🏠 ${propertyName}\n❌ Prenotazione cancellata\n\nOspite: ${data.guestName}\nDate: ${data.checkIn} → ${data.checkOut}`;
+
       case this.EVENTS.CLEANING_CREATED:
-        return `🧹 ${propertyName}\n📋 Nuova pulizia programmata\n\nData: ${data.scheduledDate}\nOspite: ${data.guestName || 'N/A'}\n${data.notes ? `\nNote: ${data.notes}` : ''}`;
+        return `🧹 ${propertyName}\n📋 Nuova pulizia programmata\n\nData: ${data.scheduledDate}\nOra: ${data.scheduledTime || '14:00'}\n${data.notes ? `Note: ${data.notes}` : ''}`;
+
+      case this.EVENTS.CLEANING_COMPLETED:
+        return `🧹 ${propertyName}\n✅ Pulizia completata\n\nData: ${data.scheduledDate}`;
 
       case this.EVENTS.MAINTENANCE_CREATED:
-        return `🔧 ${propertyName}\n⚠️ Nuova manutenzione\n\nCategoria: ${data.category}\nPriorità: ${data.priority}\nDescrizione: ${data.description}`;
+        return `🔧 ${propertyName}\n⚠️ Nuova manutenzione\n\nCategoria: ${data.categoryLabel}\nPriorità: ${data.priority}\nDescrizione: ${data.description}`;
 
       case this.EVENTS.MAINTENANCE_URGENT:
-        return `🚨 ${propertyName}\n⚠️ MANUTENZIONE URGENTE\n\nCategoria: ${data.category}\nDescrizione: ${data.description}\n\n❗ Richiede intervento immediato`;
+        return `🚨 ${propertyName}\n⚠️ MANUTENZIONE URGENTE\n\nCategoria: ${data.categoryLabel}\nDescrizione: ${data.description}\n\n❗ Richiede intervento immediato`;
+
+      case this.EVENTS.MAINTENANCE_COMPLETED:
+        return `🔧 ${propertyName}\n✅ Manutenzione completata\n\nCategoria: ${data.categoryLabel}\nDescrizione: ${data.description}`;
 
       case this.EVENTS.CHECKIN_TODAY:
         return `🏠 ${propertyName}\n✅ Check-in oggi\n\nOspite: ${data.guestName}\nOra: ${data.checkInTime || '15:00'}`;
@@ -313,7 +320,7 @@ const NotificationRouter = {
         return `🚨 ${propertyName}\n⚠️ EMERGENZA\n\n${data.message}`;
 
       default:
-        return `🏠 ${propertyName}\n📢 Notifica: ${event}\n\n${JSON.stringify(data, null, 2)}`;
+        return `🏠 ${propertyName}\n📢 Notifica: ${event}`;
     }
   },
 
@@ -326,17 +333,23 @@ const NotificationRouter = {
   getEmailSubject(event, data) {
     switch (event) {
       case this.EVENTS.BOOKING_CREATED:
-        return `Nuova prenotazione - ${data.guestName}`;
+        return `📅 Nuova prenotazione - ${data.guestName}`;
+      case this.EVENTS.BOOKING_CANCELLED:
+        return `❌ Prenotazione cancellata - ${data.guestName}`;
       case this.EVENTS.CLEANING_CREATED:
-        return `Pulizia programmata - ${data.scheduledDate}`;
+        return `🧹 Pulizia programmata - ${data.scheduledDate}`;
+      case this.EVENTS.CLEANING_COMPLETED:
+        return `✅ Pulizia completata - ${data.scheduledDate}`;
       case this.EVENTS.MAINTENANCE_CREATED:
-        return `Nuova manutenzione - ${data.category}`;
+        return `🔧 Nuova manutenzione - ${data.categoryLabel}`;
       case this.EVENTS.MAINTENANCE_URGENT:
-        return `⚠️ URGENTE - Manutenzione ${data.category}`;
+        return `🚨 URGENTE - Manutenzione ${data.categoryLabel}`;
+      case this.EVENTS.MAINTENANCE_COMPLETED:
+        return `✅ Manutenzione completata - ${data.categoryLabel}`;
       case this.EVENTS.CHECKIN_TODAY:
-        return `Check-in oggi - ${data.guestName}`;
+        return `✅ Check-in oggi - ${data.guestName}`;
       case this.EVENTS.CHECKOUT_TODAY:
-        return `Check-out oggi - ${data.guestName}`;
+        return `🚪 Check-out oggi - ${data.guestName}`;
       case this.EVENTS.EMERGENCY:
         return `🚨 EMERGENZA`;
       default:
