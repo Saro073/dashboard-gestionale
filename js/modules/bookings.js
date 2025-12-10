@@ -150,6 +150,37 @@ const BookingsModule = {
       }
     }
     
+    // Auto-crea cleaning task per giorno checkout
+    if (typeof CleaningModule !== 'undefined' && booking.status === this.STATUS.CONFIRMED) {
+      try {
+        const guestInfo = this.getGuestInfo(booking);
+        const cleaningData = {
+          bookingId: booking.id,
+          guestName: guestInfo.fullName,
+          scheduledDate: booking.checkOut,
+          scheduledTime: '14:00',
+          priority: 'normal',
+          estimatedDuration: 120,
+          cost: 25, // Costo standard pulizia
+          notes: `Pulizia post check-out - Prenotazione #${booking.id}`
+        };
+        
+        const cleaning = CleaningModule.create(cleaningData);
+        
+        // Salva riferimento cleaning in booking
+        booking.cleaningId = cleaning.id;
+        const bookings = this.getAll();
+        const index = bookings.findIndex(b => b.id === booking.id);
+        if (index !== -1) {
+          bookings[index].cleaningId = cleaning.id;
+          StorageManager.save(CONFIG.STORAGE_KEYS.BOOKINGS, bookings);
+        }
+      } catch (error) {
+        console.error('Errore auto-creazione cleaning:', error);
+        // Non bloccare creazione booking se cleaning fallisce
+      }
+    }
+    
     NotificationService.success(`Prenotazione per "${booking.guestName}" creata!`);
 
     return { success: true, booking, message: 'Prenotazione creata' };
@@ -195,6 +226,18 @@ const BookingsModule = {
     ActivityLog.log(CONFIG.ACTION_TYPES.UPDATE, 'booking', id, updates);
     EventBus.emit(EVENTS.BOOKING_UPDATED, bookings[index]);
     
+    // Se cambia checkout e ha cleaning associato, aggiorna data cleaning
+    if (updates.checkOut && oldBooking.checkOut !== bookings[index].checkOut) {
+      if (bookings[index].cleaningId && typeof CleaningModule !== 'undefined') {
+        const cleaning = CleaningModule.getById(bookings[index].cleaningId);
+        if (cleaning && cleaning.status === 'scheduled') {
+          CleaningModule.update(cleaning.id, {
+            scheduledDate: bookings[index].checkOut
+          });
+        }
+      }
+    }
+    
     // Se isPaid passa da false a true, crea transazione
     if (!oldBooking.isPaid && bookings[index].isPaid && bookings[index].totalAmount > 0) {
       const guestInfo = this.getGuestInfo(bookings[index]);
@@ -230,6 +273,21 @@ const BookingsModule = {
 
     if (!booking) {
       return { success: false, message: 'Prenotazione non trovata' };
+    }
+    
+    // Se ha cleaning associato, chiedi conferma per rimuoverlo
+    if (booking.cleaningId && typeof CleaningModule !== 'undefined') {
+      const cleaning = CleaningModule.getById(booking.cleaningId);
+      if (cleaning && cleaning.status === 'scheduled') {
+        const shouldDeleteCleaning = confirm(
+          `Questa prenotazione ha una pulizia programmata per il ${cleaning.scheduledDate}.\n\n` +
+          `Vuoi eliminare anche la pulizia associata?`
+        );
+        
+        if (shouldDeleteCleaning) {
+          CleaningModule.delete(cleaning.id);
+        }
+      }
     }
 
     const filtered = bookings.filter(b => b.id !== id);
