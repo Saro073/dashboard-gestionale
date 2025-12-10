@@ -59,11 +59,19 @@ const MaintenanceModule = {
   /**
    * Crea nuovo intervento
    */
-  async create(maintenanceData) {
+  create(maintenanceData) {
     const maintenances = this.getAll();
+    
+    // Ottieni default property se non specificato
+    let propertyId = maintenanceData.propertyId || null;
+    if (!propertyId && typeof PropertiesModule !== 'undefined') {
+      const defaultProperty = PropertiesModule.getDefault();
+      propertyId = defaultProperty?.id || null;
+    }
     
     const newMaintenance = {
       id: Date.now(),
+      propertyId: propertyId, // Property ID per notifiche smart
       category: maintenanceData.category,
       priority: maintenanceData.priority || 'medium',
       description: maintenanceData.description,
@@ -88,9 +96,37 @@ const MaintenanceModule = {
       ActivityLog.log('maintenance_created', `Creato intervento: ${this.categories[newMaintenance.category]}`);
     }
 
-    // Invia notifica Telegram se configurato
-    if (typeof TelegramService !== 'undefined' && TelegramService.isConfigured()) {
-      await TelegramService.notifyNewMaintenance(newMaintenance);
+    // 🔔 Smart notification via NotificationRouter
+    if (typeof NotificationRouter !== 'undefined' && newMaintenance.propertyId) {
+      try {
+        // Determina target roles in base alla priorità
+        let targetRoles = ['maintenance'];
+        
+        // Se urgente, notifica anche owner e contatti emergenza
+        if (newMaintenance.priority === 'urgent') {
+          targetRoles.push('owner', 'emergency');
+        }
+        
+        NotificationRouter.send({
+          event: newMaintenance.priority === 'urgent' ? 'maintenance_urgent' : 'maintenance_created',
+          propertyId: newMaintenance.propertyId,
+          targetRoles: targetRoles,
+          channels: ['telegram', 'email'],
+          data: {
+            maintenanceId: newMaintenance.id,
+            category: newMaintenance.category,
+            categoryLabel: this.categories[newMaintenance.category],
+            priority: newMaintenance.priority,
+            description: newMaintenance.description,
+            requestDate: newMaintenance.requestDate,
+            scheduledDate: newMaintenance.scheduledDate,
+            estimatedCost: newMaintenance.estimatedCost,
+            notes: newMaintenance.notes
+          }
+        });
+      } catch (error) {
+        console.error('Errore NotificationRouter:', error);
+      }
     }
 
     return newMaintenance;
@@ -99,7 +135,7 @@ const MaintenanceModule = {
   /**
    * Aggiorna intervento
    */
-  async update(id, updates) {
+  update(id, updates) {
     const maintenances = this.getAll();
     const index = maintenances.findIndex(m => m.id === parseInt(id));
     
@@ -107,6 +143,9 @@ const MaintenanceModule = {
       throw new Error('Intervento non trovato');
     }
 
+    const oldMaintenance = maintenances[index];
+    const oldStatus = oldMaintenance.status;
+    
     maintenances[index] = {
       ...maintenances[index],
       ...updates,
@@ -117,6 +156,31 @@ const MaintenanceModule = {
 
     if (typeof ActivityLog !== 'undefined') {
       ActivityLog.log('maintenance_updated', `Aggiornato intervento #${id}`);
+    }
+
+    // 🔔 Notifica se completata (importante per proprietario)
+    if (oldStatus !== 'completed' && maintenances[index].status === 'completed') {
+      if (typeof NotificationRouter !== 'undefined' && maintenances[index].propertyId) {
+        try {
+          NotificationRouter.send({
+            event: 'maintenance_completed',
+            propertyId: maintenances[index].propertyId,
+            targetRoles: ['owner'],
+            channels: ['telegram', 'email'],
+            data: {
+              maintenanceId: maintenances[index].id,
+              category: maintenances[index].category,
+              categoryLabel: this.categories[maintenances[index].category],
+              description: maintenances[index].description,
+              completedDate: maintenances[index].completedDate || new Date().toISOString().split('T')[0],
+              finalCost: maintenances[index].finalCost,
+              notes: maintenances[index].notes
+            }
+          });
+        } catch (error) {
+          console.error('Errore NotificationRouter:', error);
+        }
+      }
     }
 
     return maintenances[index];
@@ -145,7 +209,7 @@ const MaintenanceModule = {
   /**
    * Avvia intervento (cambia status a in-progress)
    */
-  async start(id) {
+  start(id) {
     const maintenance = this.getById(id);
     if (!maintenance) throw new Error('Intervento non trovato');
 
@@ -162,7 +226,7 @@ const MaintenanceModule = {
   /**
    * Completa intervento
    */
-  async complete(id, finalCost, notes = '') {
+  complete(id, finalCost, notes = '') {
     const maintenance = this.getById(id);
     if (!maintenance) throw new Error('Intervento non trovato');
 
@@ -397,5 +461,49 @@ const MaintenanceModule = {
     }
 
     return data.maintenances.length;
+  },
+  
+  /**
+   * Migration: Aggiunge propertyId a maintenance esistenti
+   * Auto-eseguita al caricamento del modulo
+   */
+  migrateToPropertyId() {
+    try {
+      const maintenances = this.getAll();
+      let migrated = 0;
+      
+      // Ottieni default property
+      let defaultPropertyId = null;
+      if (typeof PropertiesModule !== 'undefined') {
+        const defaultProperty = PropertiesModule.getDefault();
+        defaultPropertyId = defaultProperty?.id;
+      }
+      
+      maintenances.forEach(m => {
+        if (!m.propertyId && defaultPropertyId) {
+          m.propertyId = defaultPropertyId;
+          migrated++;
+        }
+      });
+      
+      if (migrated > 0) {
+        this.save(maintenances);
+        console.log(`[MaintenanceModule] Migrated ${migrated} maintenances to propertyId`);
+      }
+      
+      return migrated;
+    } catch (error) {
+      console.error('[MaintenanceModule] Migration error:', error);
+      return 0;
+    }
   }
 };
+
+// Auto-migration al caricamento
+if (typeof document !== 'undefined') {
+  document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+      MaintenanceModule.migrateToPropertyId();
+    }, 1000);
+  });
+}

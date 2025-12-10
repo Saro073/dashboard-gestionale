@@ -88,11 +88,36 @@ const CleaningModule = {
       // Emetti evento
       EventBus.emit('CLEANING_CREATED', cleaning);
       
-      // Invia notifica Telegram se configurato
-      if (typeof TelegramService !== 'undefined' && TelegramService.isConfigured()) {
-        TelegramService.notifyNewCleaning(cleaning).catch(err => {
-          console.error('Errore invio notifica Telegram:', err);
-        });
+      // 🔔 Smart notification via NotificationRouter (notifica staff pulizie)
+      if (typeof NotificationRouter !== 'undefined') {
+        try {
+          // Ottieni propertyId dal booking associato
+          let propertyId = null;
+          if (cleaning.bookingId && typeof BookingsModule !== 'undefined') {
+            const booking = BookingsModule.getById(cleaning.bookingId);
+            propertyId = booking?.propertyId;
+          }
+          
+          if (propertyId) {
+            NotificationRouter.send({
+              event: 'cleaning_created',
+              propertyId: propertyId,
+              targetRoles: ['cleaning'],
+              channels: ['telegram', 'email'],
+              data: {
+                cleaningId: cleaning.id,
+                guestName: cleaning.guestName,
+                scheduledDate: cleaning.scheduledDate,
+                scheduledTime: cleaning.scheduledTime,
+                priority: cleaning.priority,
+                estimatedDuration: cleaning.estimatedDuration,
+                notes: cleaning.notes
+              }
+            });
+          }
+        } catch (error) {
+          console.error('Errore NotificationRouter:', error);
+        }
       }
       
       return cleaning;
@@ -118,6 +143,7 @@ const CleaningModule = {
       }
       
       const cleaning = cleanings[index];
+      const oldStatus = cleaning.status;
       const updatedCleaning = { ...cleaning, ...updates };
       cleanings[index] = updatedCleaning;
       
@@ -128,6 +154,40 @@ const CleaningModule = {
       
       // Emetti evento
       EventBus.emit('CLEANING_UPDATED', updatedCleaning);
+      
+      // 🔔 Notifica se completata (importante per proprietario)
+      if (oldStatus !== 'completed' && updatedCleaning.status === 'completed') {
+        if (typeof NotificationRouter !== 'undefined') {
+          try {
+            // Ottieni propertyId dal booking associato
+            let propertyId = null;
+            if (updatedCleaning.bookingId && typeof BookingsModule !== 'undefined') {
+              const booking = BookingsModule.getById(updatedCleaning.bookingId);
+              propertyId = booking?.propertyId;
+            }
+            
+            if (propertyId) {
+              NotificationRouter.send({
+                event: 'cleaning_completed',
+                propertyId: propertyId,
+                targetRoles: ['owner'],
+                channels: ['telegram', 'email'],
+                data: {
+                  cleaningId: updatedCleaning.id,
+                  guestName: updatedCleaning.guestName,
+                  scheduledDate: updatedCleaning.scheduledDate,
+                  completedAt: updatedCleaning.completedAt || new Date().toISOString(),
+                  actualDuration: updatedCleaning.actualDuration,
+                  cost: updatedCleaning.cost,
+                  notes: updatedCleaning.notes
+                }
+              });
+            }
+          } catch (error) {
+            console.error('Errore NotificationRouter:', error);
+          }
+        }
+      }
       
       return updatedCleaning;
     } catch (error) {

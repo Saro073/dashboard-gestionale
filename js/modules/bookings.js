@@ -139,17 +139,31 @@ const BookingsModule = {
       }
     }
     
-    // Invia email conferma se configurato
-    if (typeof EmailService !== 'undefined' && EmailService.isConfigured()) {
-      const contact = ContactsModule.getById(booking.contactId);
-      if (contact && contact.emails && contact.emails.length > 0) {
-        const primaryEmail = contact.emails[0].value;
-        EmailService.sendBookingConfirmation(booking, { 
-          name: `${contact.firstName} ${contact.lastName}`,
-          email: primaryEmail 
-        }).catch(err => {
-          console.error('Errore invio email conferma:', err);
+    // 🔔 Smart notification via NotificationRouter (property-aware, role-based)
+    if (typeof NotificationRouter !== 'undefined' && booking.propertyId) {
+      try {
+        const guestInfo = this.getGuestInfo(booking);
+        
+        NotificationRouter.send({
+          event: 'booking_created',
+          propertyId: booking.propertyId,
+          targetRoles: ['owner'],
+          channels: ['telegram', 'email'],
+          data: {
+            bookingId: booking.id,
+            guestName: guestInfo.fullName,
+            guestEmail: guestInfo.email,
+            guestPhone: guestInfo.phone,
+            checkIn: booking.checkIn,
+            checkOut: booking.checkOut,
+            guests: booking.guests,
+            totalAmount: booking.totalAmount,
+            status: booking.status,
+            channel: booking.channel
+          }
         });
+      } catch (error) {
+        console.error('Errore NotificationRouter:', error);
       }
     }
     
@@ -314,7 +328,42 @@ const BookingsModule = {
    * @returns {object}
    */
   changeStatus(id, status) {
-    return this.update(id, { status });
+    const booking = this.getById(id);
+    if (!booking) {
+      return { success: false, message: 'Prenotazione non trovata' };
+    }
+    
+    const oldStatus = booking.status;
+    const result = this.update(id, { status });
+    
+    // 🔔 Notifica se cancellazione (importante per staff pulizie)
+    if (result.success && oldStatus !== this.STATUS.CANCELLED && status === this.STATUS.CANCELLED) {
+      if (typeof NotificationRouter !== 'undefined' && booking.propertyId) {
+        try {
+          const guestInfo = this.getGuestInfo(booking);
+          
+          NotificationRouter.send({
+            event: 'booking_cancelled',
+            propertyId: booking.propertyId,
+            targetRoles: ['owner', 'cleaning'], // Notifica owner e staff pulizie
+            channels: ['telegram', 'email'],
+            data: {
+              bookingId: booking.id,
+              guestName: guestInfo.fullName,
+              checkIn: booking.checkIn,
+              checkOut: booking.checkOut,
+              cancelledAt: new Date().toISOString()
+            }
+          }).catch(err => {
+            console.error('Errore notifica cancellazione:', err);
+          });
+        } catch (error) {
+          console.error('Errore NotificationRouter:', error);
+        }
+      }
+    }
+    
+    return result;
   },
 
   /**
@@ -710,6 +759,84 @@ const BookingsModule = {
     }
     
     return { migrated, linked };
+  },
+  
+  /**
+   * Invia notifiche automatiche per check-in/check-out di oggi
+   * Può essere chiamato da scheduler/cron (es. ogni mattina alle 8:00)
+   * @returns {object} - {checkInsSent, checkOutsSent}
+   */
+  sendDailyNotifications() {
+    if (typeof NotificationRouter === 'undefined') {
+      console.warn('[BookingsModule] NotificationRouter non disponibile');
+      return { checkInsSent: 0, checkOutsSent: 0 };
+    }
+    
+    let checkInsSent = 0;
+    let checkOutsSent = 0;
+    
+    try {
+      // Notifica check-in di oggi
+      const todayCheckIns = this.getTodayCheckIns();
+      todayCheckIns.forEach(booking => {
+        if (!booking.propertyId) return;
+        
+        const guestInfo = this.getGuestInfo(booking);
+        
+        NotificationRouter.send({
+          event: 'checkin_today',
+          propertyId: booking.propertyId,
+          targetRoles: ['owner', 'cleaning'], // Notifica owner e staff pulizie
+          channels: ['telegram', 'email'],
+          data: {
+            bookingId: booking.id,
+            guestName: guestInfo.fullName,
+            guestEmail: guestInfo.email,
+            guestPhone: guestInfo.phone,
+            checkIn: booking.checkIn,
+            checkOut: booking.checkOut,
+            guests: booking.guests
+          }
+        }).catch(err => {
+          console.error('Errore notifica check-in:', err);
+        });
+        
+        checkInsSent++;
+      });
+      
+      // Notifica check-out di oggi
+      const todayCheckOuts = this.getTodayCheckOuts();
+      todayCheckOuts.forEach(booking => {
+        if (!booking.propertyId) return;
+        
+        const guestInfo = this.getGuestInfo(booking);
+        
+        NotificationRouter.send({
+          event: 'checkout_today',
+          propertyId: booking.propertyId,
+          targetRoles: ['cleaning'], // Notifica staff pulizie (reminder)
+          channels: ['telegram'],
+          data: {
+            bookingId: booking.id,
+            guestName: guestInfo.fullName,
+            checkOut: booking.checkOut
+          }
+        }).catch(err => {
+          console.error('Errore notifica check-out:', err);
+        });
+        
+        checkOutsSent++;
+      });
+      
+      if (checkInsSent > 0 || checkOutsSent > 0) {
+        console.log(`[BookingsModule] Notifiche giornaliere inviate: ${checkInsSent} check-in, ${checkOutsSent} check-out`);
+      }
+      
+    } catch (error) {
+      console.error('[BookingsModule] Errore sendDailyNotifications:', error);
+    }
+    
+    return { checkInsSent, checkOutsSent };
   }
 };
 
