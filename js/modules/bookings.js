@@ -75,11 +75,11 @@ const BookingsModule = {
       // Link a contatto (opzionale)
       contactId: data.contactId || null,
       
-      // Snapshot dati ospite (fallback se contatto eliminato)
-      guestFirstName: data.guestFirstName?.trim() || '',
-      guestLastName: data.guestLastName?.trim() || '',
-      guestEmail: data.guestEmail?.trim() || '',
-      guestPhone: data.guestPhone?.trim() || '',
+      // Snapshot dati ospite (fallback se contatto eliminato) - SANITIZZATO per XSS protection
+      guestFirstName: Sanitizer.sanitize(data.guestFirstName?.trim() || ''),
+      guestLastName: Sanitizer.sanitize(data.guestLastName?.trim() || ''),
+      guestEmail: Sanitizer.sanitize(data.guestEmail?.trim() || ''),
+      guestPhone: Sanitizer.sanitize(data.guestPhone?.trim() || ''),
       guestPrivateAddress: data.guestPrivateAddress || {
         street: '',
         zip: '',
@@ -89,7 +89,7 @@ const BookingsModule = {
       guestBusinessAddress: data.guestBusinessAddress || null,
       
       // Retrocompatibilità (deprecato)
-      guestName: data.guestName?.trim() || `${data.guestFirstName || ''} ${data.guestLastName || ''}`.trim(),
+      guestName: Sanitizer.sanitize(data.guestName?.trim() || `${data.guestFirstName || ''} ${data.guestLastName || ''}`.trim()),
       
       // Dati prenotazione
       checkIn: data.checkIn,
@@ -100,7 +100,7 @@ const BookingsModule = {
       isPaid: data.isPaid || false,
       channel: data.channel || this.CHANNELS.DIRECT,
       status: data.status || this.STATUS.CONFIRMED,
-      notes: data.notes?.trim() || '',
+      notes: Sanitizer.sanitize(data.notes?.trim() || ''),
       
       // Metadata
       createdBy: currentUser.id,
@@ -230,9 +230,18 @@ const BookingsModule = {
     const currentUser = AuthManager.getCurrentUser();
     const oldBooking = { ...bookings[index] };
     
+    // Sanitizza campi testo per XSS protection
+    const sanitizedUpdates = { ...updates };
+    if (sanitizedUpdates.guestFirstName) sanitizedUpdates.guestFirstName = Sanitizer.sanitize(sanitizedUpdates.guestFirstName);
+    if (sanitizedUpdates.guestLastName) sanitizedUpdates.guestLastName = Sanitizer.sanitize(sanitizedUpdates.guestLastName);
+    if (sanitizedUpdates.guestEmail) sanitizedUpdates.guestEmail = Sanitizer.sanitize(sanitizedUpdates.guestEmail);
+    if (sanitizedUpdates.guestPhone) sanitizedUpdates.guestPhone = Sanitizer.sanitize(sanitizedUpdates.guestPhone);
+    if (sanitizedUpdates.guestName) sanitizedUpdates.guestName = Sanitizer.sanitize(sanitizedUpdates.guestName);
+    if (sanitizedUpdates.notes) sanitizedUpdates.notes = Sanitizer.sanitize(sanitizedUpdates.notes);
+    
     bookings[index] = {
       ...bookings[index],
-      ...updates,
+      ...sanitizedUpdates,
       updatedAt: new Date().toISOString(),
       updatedBy: currentUser.id,
       updatedByUsername: currentUser.username

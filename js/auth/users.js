@@ -3,20 +3,19 @@
 const UserManager = {
   
   /**
-   * Inizializza sistema utenti con admin di default
+   * Inizializza sistema utenti
+   * Per primo accesso: navigare a /auth e usare il form di login
+   * NON creiamo credenziali hardcoded per sicurezza
    */
   init() {
     const users = this.getAll();
     
-    // Crea admin di default se non esistono utenti
+    // Se nessun utente esiste, crea admin di default solo se esplicitamente richiesto
+    // Per sicurezza: il primo admin deve essere creato via UI o configurazione esterna
     if (users.length === 0) {
-      this.create({
-        username: 'admin',
-        password: 'admin123',
-        fullName: 'Amministratore',
-        email: 'admin@ferienwohnung.com',
-        role: CONFIG.ROLES.ADMIN
-      });
+      // Log per ricordare di impostare credenziali
+      console.warn('[SECURITY] Nessun utente trovato. Crea il primo admin manualmente per sicurezza.');
+      // NON creiamo credenziali hardcoded!
     }
   },
   
@@ -76,14 +75,17 @@ const UserManager = {
       return { success: false, user: null, message: 'Email non valida' };
     }
     
+    // Hash password per sicurezza
+    const hashedPassword = PasswordHash.hash(userData.password);
+    
     // Crea utente
     const user = {
       id: Utils.generateId(),
-      username: userData.username,
-      password: userData.password, // In produzione: hashare!
-      fullName: userData.fullName || userData.username,
-      email: userData.email || '',
-      phone: userData.phone || '',
+      username: Sanitizer.sanitize(userData.username),
+      password: hashedPassword, // Password hashata
+      fullName: Sanitizer.sanitize(userData.fullName || userData.username),
+      email: Sanitizer.sanitize(userData.email || ''),
+      phone: Sanitizer.sanitize(userData.phone || ''),
       role: userData.role || CONFIG.ROLES.USER,
       avatar: userData.avatar || '',
       createdAt: new Date().toISOString(),
@@ -96,7 +98,7 @@ const UserManager = {
     users.push(user);
     StorageManager.save(CONFIG.STORAGE_KEYS.USERS, users);
     
-    // Log attività
+    // Log attività (senza password)
     if (window.ActivityLog) {
       ActivityLog.log(CONFIG.ACTION_TYPES.CREATE, CONFIG.ENTITY_TYPES.USER, user.id, {
         username: user.username,
@@ -206,10 +208,10 @@ const UserManager = {
   },
   
   /**
-   * Cambia password utente
+   * Cambia password utente (sicuro con PasswordHash)
    * @param {number} id - ID utente
-   * @param {string} oldPassword - Password attuale
-   * @param {string} newPassword - Nuova password
+   * @param {string} oldPassword - Password attuale (plaintext)
+   * @param {string} newPassword - Nuova password (plaintext)
    * @returns {object} - { success: boolean, message: string }
    */
   changePassword(id, oldPassword, newPassword) {
@@ -219,16 +221,20 @@ const UserManager = {
       return { success: false, message: 'Utente non trovato' };
     }
     
-    if (user.password !== oldPassword) {
+    // Verifica password vecchia con PasswordHash (sicurezza timing-safe)
+    if (!PasswordHash.verify(oldPassword, user.password)) {
       return { success: false, message: 'Password attuale errata' };
     }
     
+    // Validazione nuova password
     const passwordValidation = Utils.validatePassword(newPassword);
     if (!passwordValidation.valid) {
       return { success: false, message: passwordValidation.message };
     }
     
-    return this.update(id, { password: newPassword });
+    // Hash nuova password
+    const hashedPassword = PasswordHash.hash(newPassword);
+    return this.update(id, { password: hashedPassword });
   },
   
   /**

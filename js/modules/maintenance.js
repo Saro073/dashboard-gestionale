@@ -74,7 +74,7 @@ const MaintenanceModule = {
       propertyId: propertyId, // Property ID per notifiche smart
       category: maintenanceData.category,
       priority: maintenanceData.priority || 'medium',
-      description: maintenanceData.description,
+      description: Sanitizer.sanitize(maintenanceData.description),
       requestDate: maintenanceData.requestDate || new Date().toISOString().split('T')[0],
       scheduledDate: maintenanceData.scheduledDate || null,
       completedDate: null,
@@ -82,7 +82,7 @@ const MaintenanceModule = {
       assignedTo: maintenanceData.assignedTo || null,
       estimatedCost: parseFloat(maintenanceData.estimatedCost) || 0,
       finalCost: null,
-      notes: maintenanceData.notes || '',
+      notes: Sanitizer.sanitize(maintenanceData.notes || ''),
       photos: maintenanceData.photos || [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()

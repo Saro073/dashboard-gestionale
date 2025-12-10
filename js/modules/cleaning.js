@@ -58,7 +58,7 @@ const CleaningModule = {
       const cleaning = {
         id: Utils.generateId(),
         bookingId: cleaningData.bookingId || null,
-        guestName: cleaningData.guestName || '',
+        guestName: Sanitizer.sanitize(cleaningData.guestName || ''),
         scheduledDate: cleaningData.scheduledDate,
         scheduledTime: cleaningData.scheduledTime || '14:00',
         assignedTo: cleaningData.assignedTo || null,
@@ -68,7 +68,7 @@ const CleaningModule = {
         actualDuration: null,
         cost: cleaningData.cost || 0,
         checklist: cleaningData.checklist || JSON.parse(JSON.stringify(this.defaultChecklist)),
-        notes: cleaningData.notes || '',
+        notes: Sanitizer.sanitize(cleaningData.notes || ''),
         photos: cleaningData.photos || [],
         startedAt: null,
         completedAt: null,

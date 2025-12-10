@@ -15,9 +15,9 @@ const AuthManager = {
   },
   
   /**
-   * Login utente
+   * Login utente (sicuro con PasswordHash)
    * @param {string} username - Username
-   * @param {string} password - Password
+   * @param {string} password - Password (plaintext)
    * @returns {object} - { success: boolean, user: object|null, message: string }
    */
   login(username, password) {
@@ -38,8 +38,8 @@ const AuthManager = {
       return { success: false, user: null, message: 'Account disattivato' };
     }
     
-    // Verifica password
-    if (user.password !== password) {
+    // Verifica password con PasswordHash (sicurezza timing-safe)
+    if (!PasswordHash.verify(password, user.password)) {
       return { success: false, user: null, message: 'Credenziali non valide' };
     }
     

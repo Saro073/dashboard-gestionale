@@ -45,11 +45,11 @@ const NotesModule = {
       return { success: false, note: null, message: 'Contenuto richiesto' };
     }
     
-    // Crea nota
+    // Crea nota - SANITIZZATA per XSS protection
     const note = {
       id: Utils.generateId(),
-      title: noteData.title.trim(),
-      content: noteData.content.trim(),
+      title: Sanitizer.sanitize(noteData.title.trim()),
+      content: Sanitizer.sanitize(noteData.content.trim()),
       category: noteData.category || CONFIG.NOTE_CATEGORIES.GENERALE,
       color: noteData.color || '#ffffff',
       pinned: noteData.pinned || false,

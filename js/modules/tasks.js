@@ -38,11 +38,11 @@ const TasksModule = {
       return { success: false, task: null, message: 'Titolo richiesto' };
     }
     
-    // Crea task
+    // Crea task - SANITIZZATO per XSS protection
     const task = {
       id: Utils.generateId(),
-      title: taskData.title.trim(),
-      description: taskData.description?.trim() || '',
+      title: Sanitizer.sanitize(taskData.title.trim()),
+      description: Sanitizer.sanitize(taskData.description?.trim() || ''),
       priority: taskData.priority || CONFIG.TASK_PRIORITIES.MEDIA,
       status: taskData.status || 'todo',
       dueDate: taskData.dueDate || null,

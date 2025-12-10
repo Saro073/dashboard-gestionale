@@ -240,35 +240,35 @@ const ContactsModule = {
       return { success: false, contact: null, message };
     }
 
-    // Crea contatto con nuovo schema
+    // Crea contatto con nuovo schema - SANITIZZATO per XSS protection
     const contact = {
       id: Utils.generateId(),
-      name: `${contactData.firstName.trim()} ${contactData.lastName?.trim() || ''}`.trim(), // Legacy compatibility
-      firstName: contactData.firstName.trim(),
-      lastName: contactData.lastName?.trim() || '',
+      name: Sanitizer.sanitize(`${contactData.firstName.trim()} ${contactData.lastName?.trim() || ''}`.trim()), // Legacy compatibility
+      firstName: Sanitizer.sanitize(contactData.firstName.trim()),
+      lastName: Sanitizer.sanitize(contactData.lastName?.trim() || ''),
       emails: contactData.emails.map(e => ({
-        value: e.value.trim(),
-        label: e.label.trim()
+        value: Sanitizer.sanitize(e.value.trim()),
+        label: Sanitizer.sanitize(e.label.trim())
       })),
       phones: contactData.phones.map(p => ({
-        value: p.value.trim(),
-        label: p.label.trim()
+        value: Sanitizer.sanitize(p.value.trim()),
+        label: Sanitizer.sanitize(p.label.trim())
       })),
       address: {
-        street: contactData.address?.street?.trim() || '',
-        city: contactData.address?.city?.trim() || '',
-        zip: contactData.address?.zip?.trim() || '',
-        province: contactData.address?.province?.trim() || '',
-        country: contactData.address?.country?.trim() || ''
+        street: Sanitizer.sanitize(contactData.address?.street?.trim() || ''),
+        city: Sanitizer.sanitize(contactData.address?.city?.trim() || ''),
+        zip: Sanitizer.sanitize(contactData.address?.zip?.trim() || ''),
+        province: Sanitizer.sanitize(contactData.address?.province?.trim() || ''),
+        country: Sanitizer.sanitize(contactData.address?.country?.trim() || '')
       },
       businessAddress: {
-        street: contactData.businessAddress?.street?.trim() || '',
-        city: contactData.businessAddress?.city?.trim() || '',
-        zip: contactData.businessAddress?.zip?.trim() || '',
-        province: contactData.businessAddress?.province?.trim() || '',
-        country: contactData.businessAddress?.country?.trim() || ''
+        street: Sanitizer.sanitize(contactData.businessAddress?.street?.trim() || ''),
+        city: Sanitizer.sanitize(contactData.businessAddress?.city?.trim() || ''),
+        zip: Sanitizer.sanitize(contactData.businessAddress?.zip?.trim() || ''),
+        province: Sanitizer.sanitize(contactData.businessAddress?.province?.trim() || ''),
+        country: Sanitizer.sanitize(contactData.businessAddress?.country?.trim() || '')
       },
-      company: contactData.company?.trim() || '',
+      company: Sanitizer.sanitize(contactData.company?.trim() || ''),
       category: contactData.category || CONFIG.CONTACT_CATEGORIES.CLIENTE,
       // Operational roles per property assignment
       roles: contactData.roles || [],  // ['cleaner', 'maintenance', 'owner', 'emergency']\n      // Notification preferences per contact
