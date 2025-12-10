@@ -1621,20 +1621,43 @@ textarea {
   border-color: var(--success-color);
 }
 
+.calendar-day.status-confirmed {
+  background: #10b981;
+  border-color: #059669;
+}
+
 .calendar-day.status-pending {
   background: var(--warning-color);
   border-color: var(--warning-color);
+  color: #78350f;
 }
 
 .calendar-day.status-cancelled {
   background: var(--danger-color);
   border-color: var(--danger-color);
   opacity: 0.6;
+  text-decoration: line-through;
 }
 
 .calendar-day.status-blocked {
   background: var(--secondary-color);
   border-color: var(--secondary-color);
+}
+
+/* Overlap detection - evidenzia conflitti */
+.calendar-day.has-overlap {
+  border: 3px solid #dc2626 !important;
+  box-shadow: 0 0 10px rgba(220, 38, 38, 0.5);
+  position: relative;
+}
+
+.calendar-day.has-overlap::after {
+  content: '⚠️';
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 1rem;
+  z-index: 10;
 }
 
 .day-number {
@@ -1656,6 +1679,25 @@ textarea {
   justify-content: space-between;
   gap: 0.25rem;
   position: relative;
+  cursor: help;
+  transition: all 0.2s;
+}
+
+/* Tooltip migliorato con multi-line */
+.day-booking[title] {
+  position: relative;
+}
+
+.day-booking:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Icone check-in/check-out */
+.booking-icon {
+  font-size: 0.875rem;
+  margin-right: 2px;
 }
 
 .day-booking .booking-name {

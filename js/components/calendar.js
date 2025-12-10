@@ -81,7 +81,7 @@ const CalendarComponent = {
   },
 
   /**
-   * Render griglia calendario
+   * Render griglia calendario - Vista mensile completa con tutte le settimane
    */
   renderCalendarGrid(year, month) {
     const firstDay = new Date(year, month, 1);
@@ -141,6 +141,12 @@ const CalendarComponent = {
         classes.push('in-range');
       }
       
+      // Overlap detection - evidenzia conflitti
+      const hasOverlap = this.checkOverlapForDate(dateStr);
+      if (hasOverlap) {
+        classes.push('has-overlap');
+      }
+      
       if (bookings.length > 0) {
         classes.push('has-booking');
         const booking = bookings[0];
@@ -148,11 +154,20 @@ const CalendarComponent = {
       }
 
       html += `
-        <div class="${classes.join(' ')}" data-date="${dateStr}">
+        <div class="${classes.join(' ')}" 
+             data-date="${dateStr}"
+             ${bookings.length > 0 ? `data-booking-id="${bookings[0].id}"` : ''}>
           <span class="day-number">${day}</span>
-          ${bookings.length > 0 ? this.renderDayBookings(bookings) : ''}
+          ${bookings.length > 0 ? this.renderDayBookings(bookings, dateStr) : ''}
         </div>
       `;
+    }
+    
+    // Giorni vuoti dopo l'ultimo giorno per completare la griglia
+    const totalCells = emptyDays + daysInMonth;
+    const remainingCells = Math.ceil(totalCells / 7) * 7 - totalCells;
+    for (let i = 0; i < remainingCells; i++) {
+      html += '<div class="calendar-day empty"></div>';
     }
 
     html += '</div></div>';
@@ -160,20 +175,46 @@ const CalendarComponent = {
   },
 
   /**
-   * Render prenotazioni nel giorno
+   * Render prenotazioni nel giorno con tooltip dettagliati
    */
-  renderDayBookings(bookings) {
+  renderDayBookings(bookings, dateStr) {
     if (bookings.length === 0) return '';
     
     const booking = bookings[0];
     const isBlocked = booking.status === 'blocked';
     const guestInfo = BookingsModule.getGuestInfo(booking);
     
+    // Calcola notti
+    const checkIn = new Date(booking.checkIn);
+    const checkOut = new Date(booking.checkOut);
+    const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
+    
+    // Determina se questa data è check-in, check-out o in mezzo
+    const isCheckIn = booking.checkIn === dateStr;
+    const isCheckOut = booking.checkOut === dateStr;
+    
+    // Tooltip dettagliato
+    const tooltipLines = [
+      `Ospite: ${guestInfo.fullName}`,
+      `Check-in: ${Utils.formatDate(booking.checkIn)}`,
+      `Check-out: ${Utils.formatDate(booking.checkOut)}`,
+      `${nights} nott${nights > 1 ? 'i' : 'e'}`,
+      booking.totalPrice ? `Prezzo: €${booking.totalPrice}` : '',
+      `Stato: ${this.getStatusLabel(booking.status)}`,
+      booking.bookingChannel ? `Canale: ${booking.bookingChannel}` : ''
+    ].filter(Boolean).join('\n');
+    
+    // Icone check-in/check-out
+    let icon = '';
+    if (isCheckIn) icon = '🟢 ';
+    else if (isCheckOut) icon = '🔴 ';
+    
     return `
       <div class="day-booking ${isBlocked ? 'blocked' : ''}" 
-           data-booking-id="${booking.id}">
-        <span class="booking-name" title="${Utils.escapeHtml(guestInfo.fullName)}">
-          ${isBlocked ? '🔒' : Utils.escapeHtml(guestInfo.fullName.substring(0, 8))}
+           data-booking-id="${booking.id}"
+           title="${Utils.escapeHtml(tooltipLines)}">
+        <span class="booking-name">
+          ${icon}${isBlocked ? '🔒' : Utils.escapeHtml(guestInfo.fullName.substring(0, 8))}
         </span>
         <button class="booking-delete-btn" 
                 data-booking-id="${booking.id}" 
@@ -645,6 +686,27 @@ const CalendarComponent = {
     
     this.resetSelection();
     this.render();
+  },
+  
+  /**
+   * Helper: Traduzione label stato
+   */
+  getStatusLabel(status) {
+    const labels = {
+      'confirmed': 'Confermata',
+      'pending': 'In attesa',
+      'cancelled': 'Cancellata',
+      'blocked': 'Bloccata'
+    };
+    return labels[status] || status;
+  },
+  
+  /**
+   * Helper: Verifica overlap per una specifica data
+   */
+  checkOverlapForDate(dateStr) {
+    const bookings = BookingsModule.getByDate(dateStr);
+    return bookings.length > 1; // Overlap se ci sono più prenotazioni nella stessa data
   }
 };
 
