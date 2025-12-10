@@ -1,11 +1,41 @@
 // ==================== CONTACTS MODULE ====================
 const ContactsModule = {
   /**
+   * Verifica se utente può accedere contatto (data ownership)
+   * @param {object} contact - Contatto
+   * @param {object} user - Utente corrente
+   * @returns {boolean} - True se utente può accedere
+   * @private
+   */
+  _canAccess(contact, user) {
+    // Admin può accedere a tutti i contatti
+    if (user && user.role === CONFIG.ROLES.ADMIN) {
+      return true;
+    }
+    
+    // Utente regolare può accedere solo ai propri contatti
+    if (user && contact.createdBy === user.id) {
+      return true;
+    }
+    
+    return false;
+  },
+
+  /**
    * Ottiene tutti i contatti
    * @returns {Array} - Array di contatti
    */
   getAll() {
-    return StorageManager.load(CONFIG.STORAGE_KEYS.CONTACTS, []);
+    const allContacts = StorageManager.load(CONFIG.STORAGE_KEYS.CONTACTS, []);
+    const currentUser = AuthManager.getCurrentUser();
+    
+    // Se non autenticato, ritorna array vuoto
+    if (!currentUser) {
+      return [];
+    }
+    
+    // Filtra contatti per data ownership
+    return allContacts.filter(contact => this._canAccess(contact, currentUser));
   },
 
   /**
@@ -14,8 +44,22 @@ const ContactsModule = {
    * @returns {object|null} - Contatto o null
    */
   getById(id) {
-    const contacts = this.getAll();
-    return contacts.find(c => c.id === id) || null;
+    const contact = StorageManager.load(CONFIG.STORAGE_KEYS.CONTACTS, [])
+      .find(c => c.id === id) || null;
+    
+    if (!contact) {
+      return null;
+    }
+    
+    const currentUser = AuthManager.getCurrentUser();
+    
+    // Verifica data ownership
+    if (!this._canAccess(contact, currentUser)) {
+      console.warn(`[SECURITY] Accesso negato a contatto ${id}: user ${currentUser?.id}`);
+      return null;
+    }
+    
+    return contact;
   },
 
   /**
@@ -24,10 +68,10 @@ const ContactsModule = {
    * @returns {object} - { success: boolean, migratedCount: number }
    */
   migrateOldContacts() {
-    const contacts = this.getAll();
+    const allContacts = StorageManager.load(CONFIG.STORAGE_KEYS.CONTACTS, []);
     let migratedCount = 0;
 
-    contacts.forEach(contact => {
+    allContacts.forEach(contact => {
       let migrated = false;
 
       // Se ha ancora email singola, converti in array
@@ -123,7 +167,7 @@ const ContactsModule = {
     });
 
     if (migratedCount > 0) {
-      StorageManager.save(CONFIG.STORAGE_KEYS.CONTACTS, contacts);
+      StorageManager.save(CONFIG.STORAGE_KEYS.CONTACTS, allContacts);
       console.log(`[ContactsModule] Migrati ${migratedCount} contatti alla nuova struttura`);
     }
 
@@ -320,15 +364,23 @@ const ContactsModule = {
    * @returns {object} - { success: boolean, contact: object|null, message: string }
    */
   update(id, updates) {
-    const contacts = this.getAll();
-    const index = contacts.findIndex(c => c.id === id);
+    const allContacts = StorageManager.load(CONFIG.STORAGE_KEYS.CONTACTS, []);
+    const index = allContacts.findIndex(c => c.id === id);
 
     if (index === -1) {
       NotificationService.error('Contatto non trovato');
       return { success: false, contact: null, message: 'Contatto non trovato' };
     }
 
-    const contact = contacts[index];
+    // Verifica data ownership
+    const currentUser = AuthManager.getCurrentUser();
+    if (!this._canAccess(allContacts[index], currentUser)) {
+      console.warn(`[SECURITY] Tentativo modifica non autorizzato contatto ${id}`);
+      NotificationService.error('Non autorizzato');
+      return { success: false, contact: null, message: 'Non autorizzato' };
+    }
+
+    const contact = allContacts[index];
 
     // Verifica permessi
     if (!PermissionsManager.canEditContact(contact)) {
@@ -380,7 +432,7 @@ const ContactsModule = {
     const updatedLastName = updates.lastName !== undefined ? updates.lastName : contact.lastName;
     const updatedName = `${updatedFirstName} ${updatedLastName}`.trim();
 
-    contacts[index] = {
+    allContacts[index] = {
       ...contact,
       ...updates,
       name: updatedName, // Mantieni legacy field aggiornato
@@ -389,21 +441,21 @@ const ContactsModule = {
       updatedByUsername: currentUser.username
     };
 
-    StorageManager.save(CONFIG.STORAGE_KEYS.CONTACTS, contacts);
+    StorageManager.save(CONFIG.STORAGE_KEYS.CONTACTS, allContacts);
 
     // Log attività
     ActivityLog.log(
       CONFIG.ACTION_TYPES.UPDATE,
       CONFIG.ENTITY_TYPES.CONTACT,
       id,
-      { name: contacts[index].name }
+      { name: allContacts[index].name }
     );
 
     // Emetti evento
-    EventBus.emit(EVENTS.CONTACT_UPDATED, { contact: contacts[index] });
+    EventBus.emit(EVENTS.CONTACT_UPDATED, { contact: allContacts[index] });
 
     NotificationService.success('Contatto aggiornato con successo');
-    return { success: true, contact: contacts[index], message: 'Contatto aggiornato' };
+    return { success: true, contact: allContacts[index], message: 'Contatto aggiornato' };
   },
 
   /**
@@ -412,13 +464,23 @@ const ContactsModule = {
    * @returns {object} - { success: boolean, message: string }
    */
   delete(id) {
-    const contacts = this.getAll();
-    const contact = contacts.find(c => c.id === id);
-
-    if (!contact) {
+    const allContacts = StorageManager.load(CONFIG.STORAGE_KEYS.CONTACTS, []);
+    const index = allContacts.findIndex(c => c.id === id);
+    
+    if (index === -1) {
       NotificationService.error('Contatto non trovato');
       return { success: false, message: 'Contatto non trovato' };
     }
+    
+    // Verifica data ownership
+    const currentUser = AuthManager.getCurrentUser();
+    if (!this._canAccess(allContacts[index], currentUser)) {
+      console.warn(`[SECURITY] Tentativo eliminazione non autorizzato contatto ${id}`);
+      NotificationService.error('Non autorizzato');
+      return { success: false, message: 'Non autorizzato' };
+    }
+
+    const contact = allContacts[index];
 
     // Verifica permessi
     if (!PermissionsManager.canDeleteContact(contact)) {
@@ -426,7 +488,7 @@ const ContactsModule = {
       return { success: false, message: 'Non autorizzato' };
     }
 
-    const filtered = contacts.filter(c => c.id !== id);
+    const filtered = allContacts.filter(c => c.id !== id);
     StorageManager.save(CONFIG.STORAGE_KEYS.CONTACTS, filtered);
 
     // Log attività
