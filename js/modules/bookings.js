@@ -136,6 +136,20 @@ const BookingsModule = {
       }
     }
     
+    // Invia email conferma se configurato
+    if (typeof EmailService !== 'undefined' && EmailService.isConfigured()) {
+      const contact = ContactsModule.getById(booking.contactId);
+      if (contact && contact.emails && contact.emails.length > 0) {
+        const primaryEmail = contact.emails[0].value;
+        EmailService.sendBookingConfirmation(booking, { 
+          name: `${contact.firstName} ${contact.lastName}`,
+          email: primaryEmail 
+        }).catch(err => {
+          console.error('Errore invio email conferma:', err);
+        });
+      }
+    }
+    
     NotificationService.success(`Prenotazione per "${booking.guestName}" creata!`);
 
     return { success: true, booking, message: 'Prenotazione creata' };

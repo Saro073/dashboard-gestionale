@@ -2332,6 +2332,12 @@ class DashboardApp {
       saveEmailBtn.addEventListener('click', () => this.saveEmailConfig());
     }
     
+    // Email test
+    const testEmailBtn = document.getElementById('testEmailBtn');
+    if (testEmailBtn) {
+      testEmailBtn.addEventListener('click', () => this.testEmailConnection());
+    }
+    
     // Notification rules save
     const saveRulesBtn = document.getElementById('saveNotificationRulesBtn');
     if (saveRulesBtn) {
@@ -2379,6 +2385,33 @@ class DashboardApp {
     
     EmailService.saveConfig(serviceId, templateId, publicKey, enabled);
     NotificationService.success('Configurazione Email salvata!');
+  }
+  
+  async testEmailConnection() {
+    if (!EmailService.isConfigured()) {
+      NotificationService.error('Configura prima Email');
+      return;
+    }
+    
+    const currentUser = AuthManager.getCurrentUser();
+    const testEmail = prompt('Inserisci email per test:', currentUser.email || '');
+    
+    if (!testEmail) return;
+    
+    NotificationService.info('Invio email di test...');
+    
+    const result = await EmailService.sendEmail(
+      testEmail,
+      'Test Dashboard - Configurazione Email',
+      '<h2>Test riuscito! ✅</h2><p>La configurazione EmailJS funziona correttamente.</p>',
+      { test: true }
+    );
+    
+    if (result.success) {
+      NotificationService.success(`✅ Email di test inviata a ${testEmail}!`);
+    } else {
+      NotificationService.error(`❌ Errore: ${result.error}`);
+    }
   }
   
   saveNotificationRules() {
