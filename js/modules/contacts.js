@@ -93,6 +93,32 @@ const ContactsModule = {
         migrated = true;
       }
 
+      // MIGRAZIONE: Aggiungi roles se mancanti
+      if (!contact.roles) {
+        contact.roles = [];
+        migrated = true;
+      }
+
+      // MIGRAZIONE: Aggiungi notificationPreferences se mancanti
+      if (!contact.notificationPreferences) {
+        const primaryEmail = contact.emails && contact.emails.length > 0 ? contact.emails[0].value : '';
+        contact.notificationPreferences = {
+          telegram: {
+            enabled: false,
+            chatId: ''
+          },
+          email: {
+            enabled: primaryEmail !== '',
+            address: primaryEmail
+          },
+          sms: {
+            enabled: false,
+            phone: ''
+          }
+        };
+        migrated = true;
+      }
+
       if (migrated) migratedCount++;
     });
 
@@ -244,6 +270,22 @@ const ContactsModule = {
       },
       company: contactData.company?.trim() || '',
       category: contactData.category || CONFIG.CONTACT_CATEGORIES.CLIENTE,
+      // Operational roles per property assignment
+      roles: contactData.roles || [],  // ['cleaner', 'maintenance', 'owner', 'emergency']\n      // Notification preferences per contact
+      notificationPreferences: contactData.notificationPreferences || {
+        telegram: {
+          enabled: false,
+          chatId: ''
+        },
+        email: {
+          enabled: true,  // Default email enabled if has email
+          address: contactData.emails && contactData.emails.length > 0 ? contactData.emails[0].value : ''
+        },
+        sms: {
+          enabled: false,
+          phone: ''
+        }
+      },
       notes: contactData.notes?.trim() || '',
       createdBy: currentUser.id,
       createdByUsername: currentUser.username,

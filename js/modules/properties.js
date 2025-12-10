@@ -59,6 +59,13 @@ const PropertiesModule = {
           country: data.address?.country || 'Italia'
         },
         color: data.color || '#3b82f6',
+        // Property-specific contacts per role
+        contacts: data.contacts || {
+          cleaning: [],      // Array di contactId per staff pulizie
+          maintenance: [],   // Array di contactId per manutentori
+          owner: null,       // ID proprietario (singolo)
+          emergency: []      // Array di contactId per emergenze
+        },
         active: true,
         createdAt: new Date().toISOString(),
         createdBy: AuthManager.getCurrentUser()?.id || null,
@@ -208,6 +215,79 @@ const PropertiesModule = {
   },
   
   /**
+   * Aggiorna contatti property
+   * @param {number} propertyId
+   * @param {object} contacts - {cleaning: [], maintenance: [], owner: null, emergency: []}
+   * @returns {object}
+   */
+  updateContacts(propertyId, contacts) {
+    try {
+      const properties = this.getAll();
+      const property = properties.find(p => p.id === propertyId);
+      
+      if (!property) {
+        throw new Error('Property non trovata');
+      }
+      
+      property.contacts = contacts;
+      property.updatedAt = new Date().toISOString();
+      
+      StorageManager.save(CONFIG.STORAGE_KEYS.PROPERTIES, properties);
+      EventBus.emit(EVENTS.PROPERTY_UPDATED, { property });
+      
+      return { success: true, property };
+    } catch (error) {
+      ErrorHandler.handle(error, 'PropertiesModule.updateContacts', true);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Ottiene contatti property con dettagli completi
+   * @param {number} propertyId
+   * @returns {object} - {cleaning: [], maintenance: [], owner: {}, emergency: []}
+   */
+  getContactsWithDetails(propertyId) {
+    const property = this.getById(propertyId);
+    if (!property || !property.contacts) return null;
+    
+    const result = {
+      cleaning: [],
+      maintenance: [],
+      owner: null,
+      emergency: []
+    };
+    
+    // Resolve cleaning contacts
+    if (property.contacts.cleaning) {
+      result.cleaning = property.contacts.cleaning
+        .map(id => ContactsModule?.getById(id))
+        .filter(Boolean);
+    }
+    
+    // Resolve maintenance contacts
+    if (property.contacts.maintenance) {
+      result.maintenance = property.contacts.maintenance
+        .map(id => ContactsModule?.getById(id))
+        .filter(Boolean);
+    }
+    
+    // Resolve owner
+    if (property.contacts.owner) {
+      result.owner = ContactsModule?.getById(property.contacts.owner);
+    }
+    
+    // Resolve emergency contacts
+    if (property.contacts.emergency) {
+      result.emergency = property.contacts.emergency
+        .map(id => ContactsModule?.getById(id))
+        .filter(Boolean);
+    }
+    
+    return result;
+  },
+
+  /**
    * Ottiene statistiche property
    * @param {number} propertyId
    * @returns {object}
@@ -247,6 +327,25 @@ const PropertiesModule = {
       if (properties.length === 0) {
         this.createDefault();
         return;
+      }
+      
+      // Migra properties senza campo contacts
+      let migratedProperties = 0;
+      properties.forEach(property => {
+        if (!property.contacts) {
+          property.contacts = {
+            cleaning: [],
+            maintenance: [],
+            owner: null,
+            emergency: []
+          };
+          migratedProperties++;
+        }
+      });
+      
+      if (migratedProperties > 0) {
+        StorageManager.save(CONFIG.STORAGE_KEYS.PROPERTIES, properties);
+        console.log(`✅ Migrati ${migratedProperties} properties con campo contacts`);
       }
       
       const defaultProperty = this.getDefault();
