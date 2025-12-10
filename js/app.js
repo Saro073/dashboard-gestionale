@@ -2289,15 +2289,15 @@ class DashboardApp {
   
   renderSettings() {
     // Load Telegram config
-    if (TelegramService.isConfigured()) {
+    if (TelegramService.config.botToken) {
       document.getElementById('telegramBotToken').value = TelegramService.config.botToken || '';
       document.getElementById('telegramCleaningChatId').value = TelegramService.config.chatIds.cleaning || '';
       document.getElementById('telegramMaintenanceChatId').value = TelegramService.config.chatIds.maintenance || '';
       document.getElementById('telegramAdminChatId').value = TelegramService.config.chatIds.admin || '';
     }
     
-    // Load Email config
-    if (EmailService.isConfigured()) {
+    // Load Email config - sempre, anche se non abilitato
+    if (EmailService.config.serviceId || EmailService.config.publicKey) {
       document.getElementById('emailServiceId').value = EmailService.config.serviceId || '';
       document.getElementById('emailTemplateId').value = EmailService.config.templateId || '';
       document.getElementById('emailPublicKey').value = EmailService.config.publicKey || '';
@@ -2376,14 +2376,13 @@ class DashboardApp {
     const serviceId = document.getElementById('emailServiceId').value.trim();
     const templateId = document.getElementById('emailTemplateId').value.trim();
     const publicKey = document.getElementById('emailPublicKey').value.trim();
-    const enabled = document.getElementById('emailEnabled').checked;
     
-    if (enabled && (!serviceId || !templateId || !publicKey)) {
+    if (!serviceId || !templateId || !publicKey) {
       NotificationService.error('Compila tutti i campi Email');
       return;
     }
     
-    EmailService.saveConfig(serviceId, templateId, publicKey, enabled);
+    EmailService.saveConfig(serviceId, templateId, publicKey);
     NotificationService.success('Configurazione Email salvata!');
   }
   

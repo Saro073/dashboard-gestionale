@@ -19,8 +19,8 @@ const EmailService = {
     if (savedConfig) {
       try {
         this.config = JSON.parse(savedConfig);
-        if (this.config.enabled && this.config.publicKey) {
-          // Inizializza EmailJS solo se configurato
+        if (this.config.publicKey) {
+          // Inizializza EmailJS
           if (typeof emailjs !== 'undefined') {
             emailjs.init(this.config.publicKey);
           }
@@ -34,11 +34,11 @@ const EmailService = {
   /**
    * Salva configurazione
    */
-  saveConfig(serviceId, templateId, publicKey, enabled = true) {
-    this.config = { serviceId, templateId, publicKey, enabled };
+  saveConfig(serviceId, templateId, publicKey) {
+    this.config = { serviceId, templateId, publicKey };
     localStorage.setItem('email_config', JSON.stringify(this.config));
     
-    if (enabled && publicKey && typeof emailjs !== 'undefined') {
+    if (publicKey && typeof emailjs !== 'undefined') {
       emailjs.init(publicKey);
     }
   },
@@ -47,7 +47,7 @@ const EmailService = {
    * Verifica se EmailJS è configurato
    */
   isConfigured() {
-    return this.config.enabled && !!this.config.serviceId && !!this.config.templateId;
+    return !!this.config.serviceId && !!this.config.templateId && !!this.config.publicKey;
   },
 
   /**
