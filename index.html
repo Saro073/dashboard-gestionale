@@ -752,6 +752,43 @@
                     </div>
                 </div>
 
+                <!-- Auto-Backup Settings -->
+                <div class="settings-card">
+                    <h2>💾 Backup Automatico</h2>
+                    <p class="text-secondary">Salvataggio automatico periodico dei dati in localStorage</p>
+                    
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="autoBackupEnabled"> Abilita Backup Automatico
+                        </label>
+                        <small>Crea backup automatici in locale senza intervento manuale</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Frequenza Backup</label>
+                        <select id="autoBackupFrequency" class="form-control">
+                            <option value="daily">Giornaliero (ogni 24 ore)</option>
+                            <option value="weekly">Settimanale (ogni 7 giorni)</option>
+                        </select>
+                    </div>
+
+                    <div id="autoBackupStats" class="backup-stats" style="margin-top: 1rem; padding: 1rem; background: #f5f5f5; border-radius: 8px;">
+                        <!-- Stats popolate da JS -->
+                    </div>
+
+                    <div id="autoBackupList" style="margin-top: 1rem;">
+                        <h3 style="font-size: 1rem; margin-bottom: 0.5rem;">Backup Automatici Disponibili</h3>
+                        <div id="autoBackupListContent">
+                            <!-- Lista backup popolata da JS -->
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button class="btn btn-secondary" id="runBackupNowBtn">▶️ Esegui Ora</button>
+                        <button class="btn btn-primary" id="saveAutoBackupBtn">💾 Salva Configurazione</button>
+                    </div>
+                </div>
+
                 <!-- Notification Rules -->
                 <div class="settings-card">
                     <h2>🔔 Regole Notifiche</h2>
@@ -1739,6 +1776,7 @@
     <!-- 5b. Services -->
     <script src="js/services/TelegramService.js"></script>
     <script src="js/services/EmailService.js"></script>
+    <script src="js/services/AutoBackupService.js"></script>
     
     <!-- 6. Componenti -->
     <script src="js/components/calendar.js"></script>

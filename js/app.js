@@ -2296,13 +2296,18 @@ class DashboardApp {
       document.getElementById('telegramAdminChatId').value = TelegramService.config.chatIds.admin || '';
     }
     
-    // Load Email config - sempre, anche se non abilitato
+    // Load Email config
     if (EmailService.config.serviceId || EmailService.config.publicKey) {
       document.getElementById('emailServiceId').value = EmailService.config.serviceId || '';
       document.getElementById('emailTemplateId').value = EmailService.config.templateId || '';
       document.getElementById('emailPublicKey').value = EmailService.config.publicKey || '';
-      document.getElementById('emailEnabled').checked = EmailService.config.enabled || false;
     }
+    
+    // Load Auto-Backup config
+    document.getElementById('autoBackupEnabled').checked = AutoBackupService.config.enabled || false;
+    document.getElementById('autoBackupFrequency').value = AutoBackupService.config.frequency || 'daily';
+    this.renderAutoBackupStats();
+    this.renderAutoBackupList();
     
     // Load notification rules
     const rules = JSON.parse(localStorage.getItem('notification_rules') || '{}');
@@ -2342,6 +2347,18 @@ class DashboardApp {
     const saveRulesBtn = document.getElementById('saveNotificationRulesBtn');
     if (saveRulesBtn) {
       saveRulesBtn.addEventListener('click', () => this.saveNotificationRules());
+    }
+    
+    // Auto-Backup save
+    const saveAutoBackupBtn = document.getElementById('saveAutoBackupBtn');
+    if (saveAutoBackupBtn) {
+      saveAutoBackupBtn.addEventListener('click', () => this.saveAutoBackupConfig());
+    }
+    
+    // Auto-Backup run now
+    const runBackupNowBtn = document.getElementById('runBackupNowBtn');
+    if (runBackupNowBtn) {
+      runBackupNowBtn.addEventListener('click', () => this.runBackupNow());
     }
   }
   
@@ -3402,6 +3419,123 @@ class DashboardApp {
     
     EventBus.emit(EVENTS.THEME_CHANGED, { theme: newTheme });
     NotificationService.info(`Tema ${newTheme === 'dark' ? 'scuro' : 'chiaro'} attivato`);
+  }
+  
+  /**
+   * Save auto-backup configuration
+   */
+  saveAutoBackupConfig() {
+    const enabled = document.getElementById('autoBackupEnabled').checked;
+    const frequency = document.getElementById('autoBackupFrequency').value;
+    
+    AutoBackupService.saveConfig(enabled, frequency);
+    
+    this.renderAutoBackupStats();
+    NotificationService.success('Configurazione auto-backup salvata!');
+  }
+  
+  /**
+   * Run backup now
+   */
+  runBackupNow() {
+    AutoBackupService.performBackup();
+    this.renderAutoBackupStats();
+    this.renderAutoBackupList();
+  }
+  
+  /**
+   * Render auto-backup stats
+   */
+  renderAutoBackupStats() {
+    const stats = AutoBackupService.getStats();
+    const container = document.getElementById('autoBackupStats');
+    
+    if (!container) return;
+    
+    const statusBadge = stats.enabled 
+      ? '<span style="color: #10b981; font-weight: bold;">✅ Attivo</span>'
+      : '<span style="color: #ef4444; font-weight: bold;">⏸️ Disabilitato</span>';
+    
+    const lastBackup = stats.lastBackup 
+      ? Utils.formatDate(new Date(stats.lastBackup), true)
+      : 'Mai';
+    
+    const nextBackup = stats.nextBackup && stats.enabled
+      ? Utils.formatDate(new Date(stats.nextBackup), true)
+      : 'N/A';
+    
+    container.innerHTML = `
+      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; font-size: 0.9rem;">
+        <div><strong>Stato:</strong> ${statusBadge}</div>
+        <div><strong>Frequenza:</strong> ${stats.frequency === 'daily' ? 'Giornaliero' : 'Settimanale'}</div>
+        <div><strong>Ultimo backup:</strong> ${lastBackup}</div>
+        <div><strong>Prossimo backup:</strong> ${nextBackup}</div>
+        <div><strong>Backup salvati:</strong> ${stats.totalBackups} / ${stats.maxBackups}</div>
+        <div><strong>Spazio usato:</strong> ${stats.storageUsed}</div>
+      </div>
+    `;
+  }
+  
+  /**
+   * Render auto-backup list
+   */
+  renderAutoBackupList() {
+    const backups = AutoBackupService.getAllAutoBackups();
+    const container = document.getElementById('autoBackupListContent');
+    
+    if (!container) return;
+    
+    if (backups.length === 0) {
+      container.innerHTML = '<p style="color: #6b7280; font-style: italic;">Nessun backup automatico disponibile</p>';
+      return;
+    }
+    
+    // Ordina per data (più recente prima)
+    backups.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    
+    container.innerHTML = backups.map(backup => `
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: white; border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 0.5rem;">
+        <div>
+          <strong>${Utils.formatDate(new Date(backup.timestamp), true)}</strong>
+          <br>
+          <small style="color: #6b7280;">
+            ${backup.data.stats.totalContacts} contatti, 
+            ${backup.data.stats.totalBookings} prenotazioni, 
+            ${backup.data.stats.totalTransactions} transazioni
+          </small>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <button class="btn btn-sm btn-secondary" onclick="app.downloadAutoBackup(${backup.id})">⬇️ Scarica</button>
+          <button class="btn btn-sm btn-primary" onclick="app.restoreAutoBackup(${backup.id})">🔄 Ripristina</button>
+          <button class="btn btn-sm btn-danger" onclick="app.deleteAutoBackup(${backup.id})">🗑️</button>
+        </div>
+      </div>
+    `).join('');
+  }
+  
+  /**
+   * Download auto-backup
+   */
+  downloadAutoBackup(id) {
+    AutoBackupService.downloadAutoBackup(id);
+  }
+  
+  /**
+   * Restore auto-backup
+   */
+  async restoreAutoBackup(id) {
+    await AutoBackupService.restoreAutoBackup(id);
+  }
+  
+  /**
+   * Delete auto-backup
+   */
+  deleteAutoBackup(id) {
+    if (confirm('Eliminare questo backup automatico?')) {
+      AutoBackupService.deleteAutoBackup(id);
+      this.renderAutoBackupList();
+      this.renderAutoBackupStats();
+    }
   }
 }
 
