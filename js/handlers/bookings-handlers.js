@@ -459,8 +459,7 @@ const BookingsHandlers = {
     };
     
     // Ottieni o crea contatto
-    const contactResult = BookingsModule.getOrCreateContact(guestData);
-    const contactId = contactResult.success ? contactResult.contactId : this.selectedContactId;
+    const contactId = BookingsModule.getOrCreateContact(guestData) || this.selectedContactId;
     
     // Costruisci booking data con nuovo modello
     const data = {
