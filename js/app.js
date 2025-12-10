@@ -333,16 +333,40 @@ class DashboardApp {
   handleLogin() {
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
+    const errorDiv = document.getElementById('loginError');
+    
+    // Verifica rate limiting PRIMA di tentare il login
+    const rateLimitCheck = AuthManager._checkRateLimit(username);
+    if (rateLimitCheck.isLocked) {
+      const minutes = Math.ceil(rateLimitCheck.remainingTime / 60);
+      const message = `Account temporaneamente bloccato. Riprova tra ${minutes} minuto${minutes !== 1 ? 'i' : ''}.`;
+      errorDiv.textContent = message;
+      errorDiv.style.display = 'block';
+      NotificationService.error(message);
+      return;
+    }
     
     const result = AuthManager.login(username, password);
     
     if (result.success) {
+      errorDiv.style.display = 'none';
       this.showDashboard();
     } else {
-      const errorDiv = document.getElementById('loginError');
       errorDiv.textContent = result.message;
       errorDiv.style.display = 'block';
       NotificationService.error(result.message);
+      
+      // Mostra numero di tentativi rimanenti se login fallito
+      const attempts = AuthManager.loginAttempts[username];
+      if (attempts && attempts.count < AuthManager.MAX_ATTEMPTS) {
+        const remaining = AuthManager.MAX_ATTEMPTS - attempts.count;
+        const attemptsMsg = `Tentativi rimasti: ${remaining}/${AuthManager.MAX_ATTEMPTS}`;
+        const notice = document.createElement('div');
+        notice.className = 'login-warning';
+        notice.textContent = attemptsMsg;
+        errorDiv.appendChild(document.createElement('br'));
+        errorDiv.appendChild(notice);
+      }
     }
   }
   

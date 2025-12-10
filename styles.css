@@ -1100,6 +1100,13 @@ textarea {
   font-size: 0.875rem;
 }
 
+.login-warning {
+  font-size: 0.8rem;
+  color: #d97706;
+  margin-top: 0.5rem;
+  font-weight: 500;
+}
+
 /* ==================== MODAL ==================== */
 .modal {
   display: none;
