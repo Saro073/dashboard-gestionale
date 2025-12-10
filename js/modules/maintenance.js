@@ -278,6 +278,17 @@ const MaintenanceModule = {
   },
 
   /**
+   * Filtra per property
+   * @param {Array} maintenances - Array di maintenances da filtrare
+   * @param {number} propertyId - ID property (null = tutte)
+   * @returns {Array}
+   */
+  filterByProperty(maintenances, propertyId = null) {
+    if (!propertyId) return maintenances; // null = mostra tutte
+    return maintenances.filter(m => m.propertyId === propertyId);
+  },
+
+  /**
    * Ottieni statistiche manutenzione
    */
   getStats(days = 30) {

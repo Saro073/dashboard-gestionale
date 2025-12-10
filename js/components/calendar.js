@@ -48,6 +48,7 @@ const CalendarComponent = {
       <div class="calendar-wrapper">
         ${this.renderHeader(year, month)}
         ${this.renderCalendarGrid(year, month)}
+        ${this.renderPropertiesLegend()}
         ${this.renderSelectionSummary()}
         ${this.renderNextWeek(year, month)}
         ${this.renderStats(year, month)}
@@ -184,6 +185,13 @@ const CalendarComponent = {
     const isBlocked = booking.status === 'blocked';
     const guestInfo = BookingsModule.getGuestInfo(booking);
     
+    // Ottieni colore property
+    let propertyColor = '#3b82f6'; // Default blu
+    if (booking.propertyId && typeof PropertiesModule !== 'undefined') {
+      const property = PropertiesModule.getById(booking.propertyId);
+      if (property) propertyColor = property.color;
+    }
+    
     // Calcola notti
     const checkIn = new Date(booking.checkIn);
     const checkOut = new Date(booking.checkOut);
@@ -212,6 +220,7 @@ const CalendarComponent = {
     return `
       <div class="day-booking ${isBlocked ? 'blocked' : ''}" 
            data-booking-id="${booking.id}"
+           style="background-color: ${propertyColor}; border-color: ${propertyColor};"
            title="${Utils.escapeHtml(tooltipLines)}">
         <span class="booking-name">
           ${icon}${isBlocked ? '🔒' : Utils.escapeHtml(guestInfo.fullName.substring(0, 8))}
@@ -262,6 +271,28 @@ const CalendarComponent = {
     }
 
     html += '</div></div>';
+    return html;
+  },
+
+  /**
+   * Render legenda colori properties
+   */
+  renderPropertiesLegend() {
+    if (!PropertiesModule) return '';
+    
+    const properties = PropertiesModule.getAll();
+    if (properties.length === 0) return '';
+    
+    let html = '<div class="calendar-legend"><strong>Proprietà:</strong> ';
+    
+    html += properties.map(property => `
+      <span class="legend-item">
+        <span class="legend-color" style="background-color: ${property.color}"></span>
+        ${Utils.escapeHtml(property.name)}
+      </span>
+    `).join('');
+    
+    html += '</div>';
     return html;
   },
 

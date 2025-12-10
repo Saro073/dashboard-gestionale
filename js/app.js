@@ -431,6 +431,78 @@ class DashboardApp {
     
     // Update previews
     this.updateStatsPreview();
+    
+    // Update properties stats
+    this.updatePropertiesStats();
+  }
+  
+  /**
+   * Aggiorna statistiche per properties
+   */
+  updatePropertiesStats() {
+    if (!PropertiesModule) return;
+    
+    const properties = PropertiesModule.getAll();
+    const section = document.getElementById('propertiesStatsSection');
+    const grid = document.getElementById('propertiesStatsGrid');
+    
+    if (!section || !grid) return;
+    
+    // Nascondi se nessuna property
+    if (properties.length === 0) {
+      section.style.display = 'none';
+      return;
+    }
+    
+    section.style.display = 'block';
+    
+    // Calcola stats globali
+    const allBookings = BookingsModule.getAll();
+    const totalRevenue = allBookings
+      .filter(b => b.status !== BookingsModule.STATUS.BLOCKED)
+      .reduce((sum, b) => sum + (b.totalAmount || 0), 0);
+    
+    // Card totali
+    let html = `
+      <div class="stat-card">
+        <div class="stat-icon">🏠</div>
+        <div class="stat-info">
+          <h3>${properties.length}</h3>
+          <p>Proprietà Totali</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">📅</div>
+        <div class="stat-info">
+          <h3>${allBookings.length}</h3>
+          <p>Prenotazioni Totali</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">💰</div>
+        <div class="stat-info">
+          <h3>€${totalRevenue.toLocaleString()}</h3>
+          <p>Revenue Totale</p>
+        </div>
+      </div>
+    `;
+    
+    // Card per ogni property
+    properties.forEach(property => {
+      const stats = PropertiesModule.getStats(property.id);
+      html += `
+        <div class="stat-card" style="border-left: 4px solid ${property.color}">
+          <div class="stat-icon" style="background: ${property.color}20; color: ${property.color}">🏠</div>
+          <div class="stat-info">
+            <h3>${Utils.escapeHtml(property.name)}</h3>
+            <p>${stats.totalBookings} prenotazioni | €${stats.totalRevenue.toLocaleString()}</p>
+            <small style="color: #6b7280; font-size: 0.75rem;">${property.address?.city || 'Indirizzo non specificato'}</small>
+          </div>
+        </div>
+      `;
+    });
+    
+    grid.innerHTML = html;
   }
   
   /**
@@ -1760,6 +1832,11 @@ class DashboardApp {
     
     let cleanings = CleaningModule.filterByStatus(statusFilter);
     
+    // Applica filtro property
+    if (CleaningModule.filterByProperty) {
+      cleanings = CleaningModule.filterByProperty(cleanings, this.currentPropertyFilter);
+    }
+    
     if (dateFilter) {
       cleanings = cleanings.filter(c => c.scheduledDate === dateFilter);
     }
@@ -2107,6 +2184,11 @@ class DashboardApp {
     const search = document.getElementById('maintenanceSearch')?.value.toLowerCase() || '';
     
     let maintenances = MaintenanceModule.getAll();
+    
+    // Aplica filtro property
+    if (MaintenanceModule.filterByProperty) {
+      maintenances = MaintenanceModule.filterByProperty(maintenances, this.currentPropertyFilter);
+    }
     
     // Apply filters
     if (categoryFilter !== 'all') {

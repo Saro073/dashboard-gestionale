@@ -173,6 +173,17 @@ const CleaningModule = {
   },
 
   /**
+   * Filtra per property
+   * @param {Array} cleanings - Array di cleanings da filtrare
+   * @param {number} propertyId - ID property (null = tutte)
+   * @returns {Array}
+   */
+  filterByProperty(cleanings, propertyId = null) {
+    if (!propertyId) return cleanings; // null = mostra tutte
+    return cleanings.filter(c => c.propertyId === propertyId);
+  },
+
+  /**
    * Filtra per data
    * @param {string} date - Data YYYY-MM-DD
    * @returns {Array} - Pulizie del giorno
