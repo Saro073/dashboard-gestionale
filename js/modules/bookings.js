@@ -31,8 +31,38 @@ const BookingsModule = {
    * Ottiene tutte le prenotazioni
    * @returns {Array}
    */
+  /**
+   * Verifica se utente può accedere prenotazione (data ownership)
+   * @param {object} booking - Prenotazione
+   * @param {object} user - Utente corrente
+   * @returns {boolean} - True se utente può accedere
+   * @private
+   */
+  _canAccess(booking, user) {
+    // Admin può accedere a tutte le prenotazioni
+    if (user && user.role === CONFIG.ROLES.ADMIN) {
+      return true;
+    }
+    
+    // Utente regolare può accedere solo alle proprie prenotazioni
+    if (user && booking.createdBy === user.id) {
+      return true;
+    }
+    
+    return false;
+  },
+
   getAll() {
-    return StorageManager.load(CONFIG.STORAGE_KEYS.BOOKINGS, []);
+    const allBookings = StorageManager.load(CONFIG.STORAGE_KEYS.BOOKINGS, []);
+    const currentUser = AuthManager.getCurrentUser();
+    
+    // Se non autenticato, ritorna array vuoto
+    if (!currentUser) {
+      return [];
+    }
+    
+    // Filtra prenotazioni per data ownership
+    return allBookings.filter(booking => this._canAccess(booking, currentUser));
   },
 
   /**
@@ -41,8 +71,22 @@ const BookingsModule = {
    * @returns {object|null}
    */
   getById(id) {
-    const bookings = this.getAll();
-    return bookings.find(b => b.id === id) || null;
+    const booking = StorageManager.load(CONFIG.STORAGE_KEYS.BOOKINGS, [])
+      .find(b => b.id === id) || null;
+    
+    if (!booking) {
+      return null;
+    }
+    
+    const currentUser = AuthManager.getCurrentUser();
+    
+    // Verifica data ownership
+    if (!this._canAccess(booking, currentUser)) {
+      console.warn(`[SECURITY] Accesso negato a prenotazione ${id}: user ${currentUser?.id}`);
+      return null;
+    }
+    
+    return booking;
   },
 
   /**
@@ -210,25 +254,31 @@ const BookingsModule = {
    * @returns {object}
    */
   update(id, updates) {
-    const bookings = this.getAll();
-    const index = bookings.findIndex(b => b.id === id);
+    const allBookings = StorageManager.load(CONFIG.STORAGE_KEYS.BOOKINGS, []);
+    const index = allBookings.findIndex(b => b.id === id);
 
     if (index === -1) {
       return { success: false, booking: null, message: 'Prenotazione non trovata' };
     }
 
+    // Verifica data ownership
+    const currentUser = AuthManager.getCurrentUser();
+    if (!this._canAccess(allBookings[index], currentUser)) {
+      console.warn(`[SECURITY] Tentativo accesso non autorizzato a prenotazione ${id}`);
+      return { success: false, booking: null, message: 'Non autorizzato' };
+    }
+
     // Se cambiano le date, verifica disponibilità
     if (updates.checkIn || updates.checkOut) {
-      const checkIn = updates.checkIn || bookings[index].checkIn;
-      const checkOut = updates.checkOut || bookings[index].checkOut;
+      const checkIn = updates.checkIn || allBookings[index].checkIn;
+      const checkOut = updates.checkOut || allBookings[index].checkOut;
       if (!this.isAvailable(checkIn, checkOut, id)) {
         NotificationService.error('Date non disponibili');
         return { success: false, booking: null, message: 'Date non disponibili' };
       }
     }
 
-    const currentUser = AuthManager.getCurrentUser();
-    const oldBooking = { ...bookings[index] };
+    const oldBooking = { ...allBookings[index] };
     
     // Sanitizza campi testo per XSS protection
     const sanitizedUpdates = { ...updates };
@@ -239,43 +289,43 @@ const BookingsModule = {
     if (sanitizedUpdates.guestName) sanitizedUpdates.guestName = Sanitizer.sanitize(sanitizedUpdates.guestName);
     if (sanitizedUpdates.notes) sanitizedUpdates.notes = Sanitizer.sanitize(sanitizedUpdates.notes);
     
-    bookings[index] = {
-      ...bookings[index],
+    allBookings[index] = {
+      ...allBookings[index],
       ...sanitizedUpdates,
       updatedAt: new Date().toISOString(),
       updatedBy: currentUser.id,
       updatedByUsername: currentUser.username
     };
 
-    StorageManager.save(CONFIG.STORAGE_KEYS.BOOKINGS, bookings);
+    StorageManager.save(CONFIG.STORAGE_KEYS.BOOKINGS, allBookings);
 
     ActivityLog.log(CONFIG.ACTION_TYPES.UPDATE, 'booking', id, updates);
-    EventBus.emit(EVENTS.BOOKING_UPDATED, bookings[index]);
+    EventBus.emit(EVENTS.BOOKING_UPDATED, allBookings[index]);
     
     // Se cambia checkout e ha cleaning associato, aggiorna data cleaning
-    if (updates.checkOut && oldBooking.checkOut !== bookings[index].checkOut) {
-      if (bookings[index].cleaningId && typeof CleaningModule !== 'undefined') {
-        const cleaning = CleaningModule.getById(bookings[index].cleaningId);
+    if (updates.checkOut && oldBooking.checkOut !== allBookings[index].checkOut) {
+      if (allBookings[index].cleaningId && typeof CleaningModule !== 'undefined') {
+        const cleaning = CleaningModule.getById(allBookings[index].cleaningId);
         if (cleaning && cleaning.status === 'scheduled') {
           CleaningModule.update(cleaning.id, {
-            scheduledDate: bookings[index].checkOut
+            scheduledDate: allBookings[index].checkOut
           });
         }
       }
     }
     
     // Se isPaid passa da false a true, crea transazione
-    if (!oldBooking.isPaid && bookings[index].isPaid && bookings[index].totalAmount > 0) {
-      const guestInfo = this.getGuestInfo(bookings[index]);
+    if (!oldBooking.isPaid && allBookings[index].isPaid && allBookings[index].totalAmount > 0) {
+      const guestInfo = this.getGuestInfo(allBookings[index]);
       const transactionData = {
         type: 'income',
         category: 'booking',
-        amount: bookings[index].totalAmount,
-        date: bookings[index].checkIn,
+        amount: allBookings[index].totalAmount,
+        date: allBookings[index].checkIn,
         description: `Prenotazione: ${guestInfo.fullName}`,
         paymentMethod: 'bank_transfer',
-        bookingId: bookings[index].id,
-        notes: `Check-in: ${bookings[index].checkIn}, Check-out: ${bookings[index].checkOut}`
+        bookingId: allBookings[index].id,
+        notes: `Check-in: ${allBookings[index].checkIn}, Check-out: ${allBookings[index].checkOut}`
       };
       
       if (typeof AccountingModule !== 'undefined') {
@@ -285,7 +335,7 @@ const BookingsModule = {
     
     NotificationService.success('Prenotazione aggiornata!');
 
-    return { success: true, booking: bookings[index], message: 'Prenotazione aggiornata' };
+    return { success: true, booking: allBookings[index], message: 'Prenotazione aggiornata' };
   },
 
   /**
@@ -294,12 +344,21 @@ const BookingsModule = {
    * @returns {object}
    */
   delete(id) {
-    const bookings = this.getAll();
-    const booking = bookings.find(b => b.id === id);
-
-    if (!booking) {
+    const allBookings = StorageManager.load(CONFIG.STORAGE_KEYS.BOOKINGS, []);
+    const index = allBookings.findIndex(b => b.id === id);
+    
+    if (index === -1) {
       return { success: false, message: 'Prenotazione non trovata' };
     }
+    
+    // Verifica data ownership
+    const currentUser = AuthManager.getCurrentUser();
+    if (!this._canAccess(allBookings[index], currentUser)) {
+      console.warn(`[SECURITY] Tentativo eliminazione non autorizzato prenotazione ${id}`);
+      return { success: false, message: 'Non autorizzato' };
+    }
+    
+    const booking = allBookings[index];
     
     // Se ha cleaning associato, chiedi conferma per rimuoverlo
     if (booking.cleaningId && typeof CleaningModule !== 'undefined') {
@@ -316,7 +375,7 @@ const BookingsModule = {
       }
     }
 
-    const filtered = bookings.filter(b => b.id !== id);
+    const filtered = allBookings.filter(b => b.id !== id);
     StorageManager.save(CONFIG.STORAGE_KEYS.BOOKINGS, filtered);
 
     const guestInfo = this.getGuestInfo(booking);
