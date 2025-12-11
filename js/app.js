@@ -14,15 +14,30 @@ class DashboardApp {
     this.selectedNotes = new Set();
     this.selectedDocuments = new Set();
     
-    this.init();
+    // Stato quick contact form
+    this.quickContactRole = null; // 'cleaning', 'maintenance', 'owner', 'emergency'
+    
+    // Salva reference globale per accesso da HTML onclick
+    DashboardApp.instance = this;
+    
+    // Avvia inizializzazione async (salva la promise se serve attendere altrove)
+    this.ready = this.init();
   }
   
   /**
    * Inizializzazione applicazione
    */
-  init() {
+  async init() {
     // Inizializza servizi core
     NotificationService.init();
+
+    // Assicura che lo storage backend sia inizializzato e cache popolata
+    try {
+      await StorageManager.loadAsync(CONFIG.STORAGE_KEYS.USERS, []);
+      await StorageManager.loadAsync(CONFIG.STORAGE_KEYS.CURRENT_USER, null);
+    } catch (error) {
+      ErrorHandler.handle(error, 'DashboardApp.init.loadStorage');
+    }
     
     // Inizializza autenticazione
     AuthManager.init();
@@ -4237,7 +4252,97 @@ class DashboardApp {
       }
     }
   }
-}
+
+  /**
+   * Toggle quick contact form nel modale proprietà
+   * @param {string|null} role - 'cleaning', 'maintenance', 'owner', 'emergency', o null per chiudere
+   */
+  toggleQuickContactForm(role) {
+    const form = document.getElementById('quickContactForm');
+    if (!form) return;
+
+    if (role) {
+      this.quickContactRole = role;
+      form.style.display = 'block';
+      document.getElementById('quickContactFirstName').focus();
+    } else {
+      this.quickContactRole = null;
+      form.style.display = 'none';
+      // Pulisci i campi
+      document.getElementById('quickContactFirstName').value = '';
+      document.getElementById('quickContactLastName').value = '';
+      document.getElementById('quickContactEmail').value = '';
+      document.getElementById('quickContactPhone').value = '';
+    }
+  }
+
+  /**
+   * Salva contatto veloce dal modale proprietà
+   */
+  saveQuickContact() {
+    const firstName = document.getElementById('quickContactFirstName').value.trim();
+    const lastName = document.getElementById('quickContactLastName').value.trim();
+    const email = document.getElementById('quickContactEmail').value.trim();
+    const phone = document.getElementById('quickContactPhone').value.trim();
+
+    // Validazione minima
+    if (!firstName || !lastName) {
+      NotificationService.error('Nome e cognome sono obbligatori');
+      return;
+    }
+
+    // Crea il contatto
+    const result = ContactsModule.create({
+      firstName: firstName,
+      lastName: lastName,
+      emails: email ? [{ value: email, label: 'Principale' }] : [],
+      phones: phone ? [{ value: phone, label: 'Principale' }] : [],
+      category: 'operativo' // Default category per staff operativo
+    });
+
+    if (!result.success) {
+      NotificationService.error(result.message || 'Errore creazione contatto');
+      return;
+    }
+
+    // Contatto creato, assegnalo al ruolo
+    const contact = result.contact;
+    const roleMap = {
+      'cleaning': 'propertyContactsCleaning',
+      'maintenance': 'propertyContactsMaintenance',
+      'owner': 'propertyContactsOwner',
+      'emergency': 'propertyContactsEmergency'
+    };
+
+    const selectId = roleMap[this.quickContactRole];
+    if (selectId) {
+      const select = document.getElementById(selectId);
+      if (select) {
+        // Aggiungi opzione al select se non esiste
+        const optionId = `contact-${contact.id}`;
+        if (!select.querySelector(`option[value="${contact.id}"]`)) {
+          const option = document.createElement('option');
+          option.value = contact.id;
+          option.text = `${contact.firstName} ${contact.lastName}`;
+          option.id = optionId;
+          select.appendChild(option);
+        }
+
+        // Seleziona il contatto appena creato
+        select.value = contact.id;
+        
+        // Se è un multi-select, aggiungi alla selezione
+        if (select.multiple) {
+          select.querySelector(`option[value="${contact.id}"]`).selected = true;
+        }
+      }
+    }
+
+    // Notifica successo e chiudi form
+    NotificationService.success(`${firstName} ${lastName} creato/a e assegnato/a!`);
+    this.toggleQuickContactForm(null);
+  }
+} // Fine classe DashboardApp
 
 // Inizializza app
 const app = new DashboardApp();

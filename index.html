@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Gestionale</title>
     <link rel="stylesheet" href="styles.css">
+    <!-- Favicon placeholder (data URI SVG) -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text x='50%' y='50%' font-size='20' dominant-baseline='middle' text-anchor='middle' fill='%233b82f6'>📊</text></svg>">
     <!-- Chart.js Library -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <!-- EmailJS Library -->
@@ -944,7 +946,10 @@
                         <p class="form-help-text">Assegna contatti per ruolo operativo. Riceveranno notifiche automatiche per questa proprietà.</p>
                         
                         <div class="form-group">
-                            <label for="propertyContactsCleaning">🧹 Staff Pulizie</label>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                <label for="propertyContactsCleaning">🧹 Staff Pulizie</label>
+                                <button type="button" class="btn btn-sm btn-secondary" onclick="DashboardApp.instance.toggleQuickContactForm('cleaning')">+ Nuovo</button>
+                            </div>
                             <select id="propertyContactsCleaning" multiple class="form-control multi-select" size="4">
                                 <!-- Popolato dinamicamente da JS -->
                             </select>
@@ -952,7 +957,10 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="propertyContactsMaintenance">🔧 Manutentori</label>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                <label for="propertyContactsMaintenance">🔧 Manutentori</label>
+                                <button type="button" class="btn btn-sm btn-secondary" onclick="DashboardApp.instance.toggleQuickContactForm('maintenance')">+ Nuovo</button>
+                            </div>
                             <select id="propertyContactsMaintenance" multiple class="form-control multi-select" size="4">
                                 <!-- Popolato dinamicamente da JS -->
                             </select>
@@ -960,7 +968,10 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="propertyContactsOwner">🏠 Proprietario</label>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                <label for="propertyContactsOwner">🏠 Proprietario</label>
+                                <button type="button" class="btn btn-sm btn-secondary" onclick="DashboardApp.instance.toggleQuickContactForm('owner')">+ Nuovo</button>
+                            </div>
                             <select id="propertyContactsOwner" class="form-control">
                                 <option value="">Nessuno</option>
                                 <!-- Popolato dinamicamente da JS -->
@@ -969,11 +980,39 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="propertyContactsEmergency">🚨 Contatti Emergenza</label>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                <label for="propertyContactsEmergency">🚨 Contatti Emergenza</label>
+                                <button type="button" class="btn btn-sm btn-secondary" onclick="DashboardApp.instance.toggleQuickContactForm('emergency')">+ Nuovo</button>
+                            </div>
                             <select id="propertyContactsEmergency" multiple class="form-control multi-select" size="4">
                                 <!-- Popolato dinamicamente da JS -->
                             </select>
                             <small>Riceveranno notifiche per situazioni urgenti</small>
+                        </div>
+
+                        <!-- Quick Contact Form (nascosto per default) -->
+                        <div id="quickContactForm" style="display: none; margin-top: 1.5rem; padding: 1rem; background: #f3f4f6; border-radius: 0.5rem; border: 1px solid #d1d5db;">
+                            <h4 style="margin: 0 0 1rem 0;">➕ Crea Contatto Veloce</h4>
+                            <div class="form-group">
+                                <label for="quickContactFirstName">Nome *</label>
+                                <input type="text" id="quickContactFirstName" placeholder="Mario" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="quickContactLastName">Cognome *</label>
+                                <input type="text" id="quickContactLastName" placeholder="Rossi" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="quickContactEmail">Email</label>
+                                <input type="email" id="quickContactEmail" placeholder="mario@example.com">
+                            </div>
+                            <div class="form-group">
+                                <label for="quickContactPhone">Telefono</label>
+                                <input type="tel" id="quickContactPhone" placeholder="+39 123 456789">
+                            </div>
+                            <div class="form-actions" style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="DashboardApp.instance.toggleQuickContactForm(null)">Annulla</button>
+                                <button type="button" class="btn btn-primary btn-sm" onclick="DashboardApp.instance.saveQuickContact()">Crea e Assegna</button>
+                            </div>
                         </div>
                     </fieldset>
 
@@ -1122,12 +1161,6 @@
                             <div class="form-group" style="flex: 2;">
                                 <label for="contactBusinessAddressCountry">Paese</label>
                                 <input type="text" id="contactBusinessAddressCountry" placeholder="es: Italia">
-                            </div>
-                        </div>
-                    </fieldset>
-                            <div class="form-group" style="flex: 2;">
-                                <label for="contactAddressCountry">Paese</label>
-                                <input type="text" id="contactAddressCountry" placeholder="es: Italia">
                             </div>
                         </div>
                     </fieldset>

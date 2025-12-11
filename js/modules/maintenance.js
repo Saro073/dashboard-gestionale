@@ -226,7 +226,7 @@ const MaintenanceModule = {
   /**
    * Completa intervento
    */
-  complete(id, finalCost, notes = '') {
+  async complete(id, finalCost, notes = '') {
     const maintenance = this.getById(id);
     if (!maintenance) throw new Error('Intervento non trovato');
 
@@ -246,7 +246,7 @@ const MaintenanceModule = {
       });
     }
 
-    const updated = await this.update(id, {
+    const updated = this.update(id, {
       status: 'completed',
       completedDate: completedDate,
       finalCost: cost,
