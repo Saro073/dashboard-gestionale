@@ -181,5 +181,112 @@ TOTAL                   2,518 lines
 
 ---
 
-**Last Updated**: 2025-01-10
+## 📘 APPENDIX: Best Practices
+
+### 🛡️ Error Handling
+
+**ErrorHandler Centralizzato** (`js/utils.js`):
+
+```javascript
+// Gestione errori manuale
+try {
+  const result = someOperation();
+} catch (error) {
+  ErrorHandler.handle(error, 'ModuleName.methodName', true);
+  // true = mostra notifica utente
+}
+
+// Wrapper async automatico
+const safeOperation = ErrorHandler.wrap(async () => {
+  return await fetchData();
+}, 'ModuleName.operationName');
+```
+
+**Logging Standards**:
+- Console errors solo tramite `ErrorHandler.handle()`
+- Context: `ModuleName.methodName`
+- User notification: `showToUser=true` per errori critici
+
+### 📦 Backup & Restore
+
+```javascript
+// Creazione backup
+BackupModule.downloadBackup();
+
+// Ripristino (⚠️ sovrascrive TUTTI i dati)
+const result = await BackupModule.restoreBackup(backupData);
+```
+
+### 📊 Export Contabilità
+
+```javascript
+// Export CSV per commercialista
+AccountingModule.exportToCSV(2025, 0); // Gennaio
+AccountingModule.exportToCSV(2025);    // Anno completo
+AccountingModule.exportSummary(2025);  // Riepilogo testuale
+```
+
+**Formato CSV**: Data | Tipo | Categoria | Descrizione | Importo | Metodo | N° Ricevuta | Note | Creatore
+
+### 🎨 UI/UX Best Practices
+
+**Mobile Responsive**:
+- Breakpoint tablet: `@media (max-width: 1024px)` → hamburger menu
+- Breakpoint mobile: `@media (max-width: 768px)` → layout singola colonna
+
+**Notifiche**:
+```javascript
+NotificationService.success('Operazione completata');
+NotificationService.error('Errore imprevisto');
+NotificationService.info('Info utile');
+```
+
+### 🗂️ Data Management
+
+**localStorage Keys** (definiti in `js/config.js`):
+- `dashboard_contacts`, `dashboard_tasks`, `dashboard_bookings`, `dashboard_accounting`, etc.
+
+**Activity Log**:
+```javascript
+ActivityLog.log(
+  CONFIG.ACTION_TYPES.CREATE,  // CREATE | UPDATE | DELETE
+  CONFIG.ENTITY_TYPES.CONTACT, // CONTACT | TASK | BOOKING
+  entityId,
+  { customData: 'optional' }
+);
+```
+
+### 🔐 Permissions
+
+```javascript
+if (PermissionsManager.canCreateUsers()) { /* admin only */ }
+if (PermissionsManager.canDeleteContact(contactId)) { /* ownership */ }
+```
+
+### 🚀 Performance
+
+**Debouncing**:
+```javascript
+input.addEventListener('input', 
+  Utils.debounce(() => performSearch(), 300)
+);
+```
+
+**Lazy Loading**: Rendering condizionale con `container.isConnected`
+
+### 🎯 Future Improvements
+
+**High Priority**:
+- Backup automatico giornaliero/settimanale
+- Remote error logging
+- PWA offline support
+
+**Medium Priority**:
+- Calendario vista mensile integrata
+- Gestione pulizie automatica
+- Bulk actions (selezione multipla)
+
+---
+
+**Last Updated**: 11 Dicembre 2025
 **Status**: ✅ **CONSOLIDATED & OPTIMIZED**

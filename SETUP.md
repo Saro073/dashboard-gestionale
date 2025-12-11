@@ -1,18 +1,36 @@
-# 🔐 First-User Setup & Security Configuration
+# 🔐 Setup & Configuration - Dashboard Gestionale
 
-**Complete guide for initial administrator account creation and system security**
+**Guida completa per installazione, primo accesso e troubleshooting**
 
 ---
 
-## Quick Start
+## 🚀 AVVIO RAPIDO
 
-**Fresh Installation**:
-1. Deploy application
-2. Open in browser
-3. Setup form appears automatically
-4. Create admin account with strong password
-5. Dashboard displays after auto-login
-6. System ready to use
+### Prima volta (setup iniziale):
+
+```bash
+# 1. Assicurati di avere Node.js installato
+node --version  # Deve essere v14 o superiore
+npm --version
+
+# Se non hai Node.js, installalo da: https://nodejs.org/
+
+# 2. Lancia lo script di avvio
+./start.sh
+```
+
+**Cosa succede al primo avvio:**
+1. Il browser si apre automaticamente
+2. Vedi la schermata "Crea primo account amministratore"
+3. Inserisci username, password, email
+4. Fai login automatico → entri nella dashboard vuota
+5. I dati vengono salvati in `./data/*.json` (persistenti!)
+
+### Avvii successivi:
+
+```bash
+./start.sh  # Login con le tue credenziali
+```
 
 ---
 
@@ -282,6 +300,189 @@ UserManager.getAll().length === 0
 - [ ] Error messages display properly
 - [ ] Setup form doesn't appear on subsequent loads
 - [ ] Second user creation works normally
+
+---
+
+## 📁 Backend & Persistenza Dati
+
+### Dove Sono i Dati?
+
+**IMPORTANTE**: I dati NON sono più nel localStorage del browser!
+
+```
+./data/              ← Tutti i tuoi dati (JSON files)
+./backups/           ← Backup automatici ad ogni modifica
+```
+
+**Vantaggi**:
+- ✅ Dati persistenti anche se chiudi il browser
+- ✅ Backup automatici
+- ✅ Puoi fare backup manuali copiando la cartella `data/`
+- ✅ Migrazione facile (sposta cartella `data/`)
+
+### Architettura
+
+**Backend (Node.js - porta 3000)**
+- Server Express per gestire salvataggio dati
+- Salva su file JSON in `./data/`
+- Backup automatici in `./backups/`
+
+**Frontend (Python HTTP - porta 8000)**
+- Interfaccia web (vanilla JS)
+- Comunica con backend via API REST
+
+### Backup e Restore
+
+**Backup manuale:**
+```bash
+# Copia l'intera cartella data
+cp -r data/ backup_manuale_$(date +%Y%m%d)/
+```
+
+**Restore da backup:**
+```bash
+# Sostituisci la cartella data con il backup
+rm -rf data/
+cp -r backup_manuale_20250115/ data/
+```
+
+**Backup automatici:**
+Ogni volta che modifichi dati, viene creato un backup automatico in `./backups/`
+
+---
+
+## ⚠️ TROUBLESHOOTING COMPLETO
+
+### Problema di Login
+
+#### 1. Nessun Account Admin Creato (CASO PIÙ COMUNE)
+Se è la prima volta che usi il dashboard, nessun account esiste ancora.
+
+**Soluzione:**
+Apri il browser a:
+```
+http://localhost:8000/scripts/initialize-admin.html
+```
+
+Compila il form con:
+- **Username**: `admin`
+- **Password**: `admin` (cambierai dopo il primo accesso)
+- **Full Name**: `Administrator`
+- **Email**: `admin@example.com`
+
+Clicca **"Create Admin Account"** e sarai reindirizzato al dashboard.
+
+#### 2. Reset localStorage Corrotto
+Se i dati locali sono danneggiati:
+
+1. Apri Console Browser (F12)
+2. Esegui: `localStorage.clear()`
+3. Ricarica la pagina: `location.reload()`
+4. Dovresti ora vedere la schermata di setup
+
+#### 3. Password Non Valida
+La password deve avere:
+- **Min 8 caratteri**
+- **Almeno 1 lettera maiuscola**
+- **Almeno 1 numero**
+
+Esempi corretti:
+- ✅ `Admin123`
+- ✅ `DashboardPass2024`
+
+Esempi errati:
+- ❌ `admin` (troppo corta, no maiuscola)
+- ❌ `password123` (no maiuscola)
+
+#### 4. Account Bloccato (Rate Limiting)
+Dopo 5 tentativi falliti, l'account è bloccato per 15 minuti.
+
+**Soluzione rapida:**
+```javascript
+// Console (F12):
+localStorage.clear();
+location.reload();
+```
+
+### Problemi Backend
+
+#### "Errore avvio backend"
+
+```bash
+# Verifica che Node.js sia installato
+node --version
+
+# Se non c'è, installalo da https://nodejs.org/
+```
+
+#### "Porta già in uso"
+
+Lo script usa automaticamente porta alternativa (8001).
+
+#### "Perdo i dati"
+
+**VECCHIO sistema**: `localStorage` del browser → si perdeva tutto
+**NUOVO sistema**: `./data/*.json` → persistenti!
+
+Per verificare:
+```bash
+ls -la data/  # Vedi i file JSON con i tuoi dati
+```
+
+#### "Non vedo i dati dopo il riavvio"
+
+1. Verifica che il backend sia attivo:
+```bash
+curl http://localhost:3000/health
+# Deve rispondere: {"status":"ok","timestamp":"..."}
+```
+
+2. Controlla i log:
+```bash
+tail -f /tmp/dashboard_backend.log
+tail -f /tmp/dashboard_frontend.log
+```
+
+### Test Manuale Backend
+
+```bash
+# Salva un dato
+curl -X POST http://localhost:3000/api/storage/test \
+  -H "Content-Type: application/json" \
+  -d '{"data": {"hello": "world"}}'
+
+# Leggi il dato
+curl http://localhost:3000/api/storage/test
+
+# Verifica file creato
+cat data/test.json
+```
+
+### Verifica Server Attivi
+
+```bash
+lsof -i :3000  # Backend
+lsof -i :8000  # Frontend
+```
+
+---
+
+## 🔐 SICUREZZA
+
+- Le password sono hashate (SHA-256)
+- I dati sono salvati in locale (non su cloud)
+- Backup automatici proteggono da perdite accidentali
+
+**RACCOMANDAZIONE**: Fai backup periodici della cartella `data/` su un disco esterno o cloud privato.
+
+---
+
+## 📝 NOTE IMPORTANTI
+
+1. **Non eliminare la cartella `data/`** - contiene tutti i tuoi dati!
+2. **Backup regolari** - copia `data/` su un drive esterno
+3. **Testing in sicurezza** - i backup automatici ti proteggono
+4. **Migrazione semplice** - sposta `data/` su un altro computer
 
 ---
 

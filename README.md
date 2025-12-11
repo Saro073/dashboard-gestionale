@@ -13,13 +13,100 @@ Dashboard gestionale completa per la gestione di **casa vacanze** (Ferienwohnung
 
 ## 🚀 QUICKSTART (2 minuti)
 
-### Avvia subito:
+### 1️⃣ Avvia il Dashboard
 ```bash
+cd /path/to/dashboard-gestionale
 ./start.sh
-# Browser si apre automaticamente a http://localhost:8000
 ```
 
-**Nuovo utente?** Vedi [QUICKSTART.md](QUICKSTART.md) per guide step-by-step.
+Il browser si apre automaticamente a `http://localhost:8000`.
+
+Se non funziona il double-click su `start.sh`, usa il terminal:
+```bash
+bash start.sh
+```
+
+### 2️⃣ Primo Accesso (Setup Admin)
+
+**Schermata**: "Crea Account Amministratore"
+
+Compila i campi:
+- **Username**: Es. `saro` (min 3 caratteri)
+- **Nome Completo**: Es. `Saro Rossi`
+- **Email**: Es. `saro@example.com` (formato valido)
+- **Password**: Min 8 caratteri, 1 maiuscola, 1 numero (Es. `Password123`)
+- **Conferma Password**: Ripeti la password
+
+Clicca **"Crea Account"** → Automaticamente loggato!
+
+### 3️⃣ Prime 5 Azioni Essenziali
+
+#### 1. Aggiungere un Contatto (Ospite)
+**Menu**: Contatti → `+ Aggiungi Contatto`
+- Nome, Email, Telefono
+- Categoria (es. "cliente")
+- Indirizzi (privato/business)
+Clicca **Salva**
+
+#### 2. Creare una Prenotazione
+**Menu**: Prenotazioni → Calendario Airbnb-style
+1. Seleziona **Check-in** (clicca data verde)
+2. Seleziona **Check-out** (clicca data dopo check-in)
+3. Menu azioni appare → `Nuova Prenotazione`
+4. Seleziona ospite (autocomplete) o compila manualmente
+5. Importo totale, caparra, status
+6. Clicca **Salva** → Cleaning auto-creato!
+
+#### 3. Registrare un'Entrata (Contabilità)
+**Menu**: Contabilità → `+ Aggiungi Transazione`
+- Tipo: Entrata
+- Categoria: Booking
+- Data, Importo (es. 150€)
+- Metodo pagamento
+Clicca **Salva**
+
+#### 4. Registrare una Pulizia
+**Menu**: Cleaning (auto-creata da booking, oppure manuale)
+- Se da booking: è già settata automaticamente
+- Se manuale → `+ Aggiungi Pulizia`
+
+#### 5. Guardare Analytics
+**Menu**: Analytics
+- Revenue trend
+- Occupancy %
+- Booking channels
+- Expense categories
+
+### 🔧 Troubleshooting Rapido
+
+| Problema | Soluzione |
+|----------|-----------|
+| **Browser non si apre** | Apri manualmente `http://localhost:8000` |
+| **"Porta già in uso"** | Lo script prova 8001, oppure: `lsof -ti:8000 \| xargs kill -9` |
+| **Password non accettata** | Min 8 char + 1 maiuscola + 1 numero. Es: `Admin123` ✅ |
+| **Dati scomparsi** | Usa Impostazioni → Backup per recuperare |
+| **Notifiche non funzionano** | Setup Telegram/Email in Impostazioni → Integrazioni |
+
+### 🎛️ Menu Principale
+
+```
+📊 Overview      → Statistiche dashboard
+👥 Contatti      → Gestione ospiti/contatti
+✅ Task          → To-do list
+📝 Note          → Appunti
+📄 Documenti     → File upload
+🗓️ Prenotazioni  → Calendario + booking
+🧹 Cleaning      → Schedule pulizie
+🔧 Manutenzione  → Repair tracking
+💰 Contabilità   → Entrate/uscite
+📈 Analytics     → Grafici revenue/occupancy
+📋 Attività      → Audit log
+👤 Utenti        → Gestione team
+🏷️ Categorie     → Custom tags
+⚙️ Impostazioni  → Config system
+🏠 Properties    → Multi-proprietà
+💾 Backup        → Download/restore
+```
 
 ---
 
