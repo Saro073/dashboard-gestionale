@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Migrazione localStorage → Backend</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+    }
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-right: 10px;
+    }
+    button:hover {
+      background: #45a049;
+    }
+    button.secondary {
+      background: #2196F3;
+    }
+    button.danger {
+      background: #f44336;
+    }
+    .output {
+      margin-top: 20px;
+      padding: 15px;
+      background: #f9f9f9;
+      border-left: 4px solid #4CAF50;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      font-family: monospace;
+      font-size: 14px;
+      display: none;
+    }
+    .output.error {
+      border-left-color: #f44336;
+      background: #ffebee;
+    }
+    .output.success {
+      border-left-color: #4CAF50;
+      background: #e8f5e9;
+    }
+    .status {
+      margin: 15px 0;
+      padding: 10px;
+      border-radius: 4px;
+    }
+    .status.info {
+      background: #e3f2fd;
+      border: 1px solid #2196F3;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔄 Migrazione Dati</h1>
+    <p class="subtitle">Sposta i dati da localStorage del browser al backend persistente</p>
+    
+    <div class="status info">
+      <strong>Cosa fa questo tool:</strong><br>
+      1. Legge tutti i dati da localStorage del browser<br>
+      2. Li invia al backend Node.js<br>
+      3. Il backend li salva in file JSON permanenti<br>
+      4. I backup automatici proteggono i tuoi dati
+    </div>
+    
+    <button onclick="checkLocalStorage()">📊 Controlla localStorage</button>
+    <button onclick="migrateData()" class="secondary">🚀 Migra Dati al Backend</button>
+    <button onclick="verifyBackend()" class="secondary">✅ Verifica Backend</button>
+    <button onclick="clearLocalStorage()" class="danger">🗑️ Pulisci localStorage (dopo migrazione)</button>
+    
+    <div id="output" class="output"></div>
+  </div>
+
+  <script>
+    const BACKEND_URL = 'http://localhost:3000/api/storage';
+    
+    function showOutput(message, type = 'info') {
+      const output = document.getElementById('output');
+      output.textContent = message;
+      output.className = `output ${type}`;
+      output.style.display = 'block';
+    }
+    
+    async function checkLocalStorage() {
+      let message = '📦 Contenuto localStorage:\n\n';
+      let totalSize = 0;
+      let itemCount = 0;
+      
+      for (let key in localStorage) {
+        if (localStorage.hasOwnProperty(key)) {
+          const value = localStorage.getItem(key);
+          const size = key.length + value.length;
+          totalSize += size;
+          itemCount++;
+          
+          message += `${key}:\n`;
+          message += `  Dimensione: ${(size / 1024).toFixed(2)} KB\n`;
+          
+          try {
+            const parsed = JSON.parse(value);
+            if (Array.isArray(parsed)) {
+              message += `  Tipo: Array (${parsed.length} elementi)\n`;
+            } else if (typeof parsed === 'object') {
+              message += `  Tipo: Object (${Object.keys(parsed).length} chiavi)\n`;
+            }
+          } catch (e) {
+            message += `  Tipo: String\n`;
+          }
+          message += '\n';
+        }
+      }
+      
+      message += `\nTOTALE: ${itemCount} chiavi, ${(totalSize / 1024).toFixed(2)} KB`;
+      showOutput(message, 'info');
+    }
+    
+    async function verifyBackend() {
+      try {
+        const response = await fetch('http://localhost:3000/health');
+        if (!response.ok) {
+          throw new Error('Backend non raggiungibile');
+        }
+        const data = await response.json();
+        
+        // Lista chiavi esistenti nel backend
+        const keysResponse = await fetch(BACKEND_URL);
+        const keysData = await keysResponse.json();
+        
+        let message = '✅ BACKEND ATTIVO\n\n';
+        message += `Timestamp: ${data.timestamp}\n`;
+        message += `\n📁 Chiavi salvate nel backend:\n`;
+        if (keysData.success && keysData.keys.length > 0) {
+          keysData.keys.forEach(key => {
+            message += `  - ${key}\n`;
+          });
+        } else {
+          message += '  (nessuna chiave ancora)\n';
+        }
+        
+        showOutput(message, 'success');
+      } catch (error) {
+        showOutput(`❌ ERRORE:\n\n${error.message}\n\nVerifica che il backend sia attivo:\n./start.sh`, 'error');
+      }
+    }
+    
+    async function migrateData() {
+      if (!confirm('Vuoi migrare tutti i dati da localStorage al backend?')) {
+        return;
+      }
+      
+      let message = '🚀 MIGRAZIONE IN CORSO...\n\n';
+      showOutput(message, 'info');
+      
+      let successCount = 0;
+      let errorCount = 0;
+      let totalKeys = 0;
+      
+      for (let key in localStorage) {
+        if (localStorage.hasOwnProperty(key)) {
+          totalKeys++;
+          const value = localStorage.getItem(key);
+          
+          try {
+            const data = JSON.parse(value);
+            
+            const response = await fetch(`${BACKEND_URL}/${key}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ data })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+              message += `✅ ${key}\n`;
+              successCount++;
+            } else {
+              message += `❌ ${key}: ${result.error || 'errore sconosciuto'}\n`;
+              errorCount++;
+            }
+          } catch (error) {
+            message += `❌ ${key}: ${error.message}\n`;
+            errorCount++;
+          }
+          
+          // Aggiorna output in tempo reale
+          showOutput(message, errorCount > 0 ? 'error' : 'success');
+        }
+      }
+      
+      message += `\n═══════════════════════════════\n`;
+      message += `TOTALE: ${totalKeys} chiavi\n`;
+      message += `✅ Successo: ${successCount}\n`;
+      message += `❌ Errori: ${errorCount}\n`;
+      
+      if (errorCount === 0) {
+        message += `\n🎉 MIGRAZIONE COMPLETATA!\n`;
+        message += `\nI tuoi dati sono ora salvati in:\n`;
+        message += `./data/*.json\n\n`;
+        message += `Puoi verificare eseguendo:\n`;
+        message += `ls -la data/`;
+      }
+      
+      showOutput(message, errorCount > 0 ? 'error' : 'success');
+    }
+    
+    function clearLocalStorage() {
+      if (!confirm('⚠️ ATTENZIONE!\n\nQuesta operazione eliminerà TUTTI i dati da localStorage.\n\nEseguila SOLO dopo aver verificato che la migrazione sia andata a buon fine!\n\nContinuare?')) {
+        return;
+      }
+      
+      if (!confirm('Sei SICURO? I dati verranno persi se non hai fatto la migrazione!')) {
+        return;
+      }
+      
+      const keys = [];
+      for (let key in localStorage) {
+        if (localStorage.hasOwnProperty(key)) {
+          keys.push(key);
+        }
+      }
+      
+      localStorage.clear();
+      
+      let message = `🗑️ LOCALSTORAGE PULITO\n\n`;
+      message += `Eliminate ${keys.length} chiavi:\n\n`;
+      keys.forEach(key => message += `  - ${key}\n`);
+      message += `\nI dati rimangono salvati nel backend (./data/*.json)`;
+      
+      showOutput(message, 'success');
+    }
+    
+    // Auto-check al caricamento
+    window.addEventListener('load', () => {
+      setTimeout(verifyBackend, 500);
+    });
+  </script>
+</body>
+</html>

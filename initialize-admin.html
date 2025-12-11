@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Initialize Admin - Dashboard Gestionale</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .init-box {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+        }
+        h1 { color: #333; margin-top: 0; }
+        p { color: #666; line-height: 1.5; }
+        .form-group { margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 0.5rem; color: #555; font-weight: 500; }
+        input { width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; box-sizing: border-box; }
+        input:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+        button { width: 100%; padding: 0.75rem; background: #667eea; color: white; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer; font-weight: 600; transition: background 0.3s; }
+        button:hover { background: #5568d3; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .success { color: #27ae60; margin-top: 1rem; padding: 1rem; background: #ecfdf5; border-radius: 4px; }
+        .error { color: #e74c3c; margin-top: 1rem; padding: 1rem; background: #fadbd8; border-radius: 4px; }
+        .info { color: #3498db; margin-top: 1rem; padding: 1rem; background: #ebf5fb; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="init-box">
+        <h1>🔐 Initialize Admin</h1>
+        <p>Create the default admin account for first login.</p>
+        
+        <form id="initForm">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" value="admin" required minlength="3">
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" value="admin" required minlength="8">
+            </div>
+            <div class="form-group">
+                <label for="fullName">Full Name</label>
+                <input type="text" id="fullName" value="Administrator" required>
+            </div>
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" value="admin@example.com" required>
+            </div>
+            <button type="submit" id="submitBtn">Create Admin Account</button>
+            <div id="message"></div>
+        </form>
+    </div>
+
+    <script>
+        const scripts = [
+            'js/config.js',
+            'js/security/hash.js',
+            'js/security/sanitizer.js',
+            'js/storage.js',
+            'js/utils.js',
+            'js/auth/users.js',
+            'js/auth/auth.js'
+        ];
+        let loaded = 0, scriptsReady = false;
+
+        function checkReady() {
+            loaded++;
+            if (loaded === scripts.length) {
+                scriptsReady = true;
+                document.getElementById('initForm').addEventListener('submit', handleInit);
+            }
+        }
+
+        scripts.forEach(src => {
+            const script = document.createElement('script');
+            script.src = src;
+            script.onload = checkReady;
+            script.onerror = () => showMessage('❌ Error: Could not load required scripts.', 'error');
+            document.head.appendChild(script);
+        });
+
+        function handleInit(e) {
+            e.preventDefault();
+            if (!scriptsReady) {
+                showMessage('❌ Scripts are still loading...', 'error');
+                return;
+            }
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const fullName = document.getElementById('fullName').value;
+            const email = document.getElementById('email').value;
+            const submitBtn = document.getElementById('submitBtn');
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Creating...';
+
+            try {
+                if (password.length < 8) {
+                    showMessage('❌ Password must be at least 8 characters', 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Create Admin Account';
+                    return;
+                }
+
+                const result = UserManager.create({username, password, fullName, email, role: 'admin'});
+
+                if (result.success) {
+                    showMessage('✅ Admin account created! Logging in...', 'success');
+                    
+                    // Auto-login dopo creazione account
+                    AuthManager.init();
+                    const loginResult = AuthManager.login(username, password);
+                    
+                    if (loginResult.success) {
+                        showMessage('✅ Logged in successfully! Redirecting...', 'success');
+                        document.getElementById('initForm').style.display = 'none';
+                        setTimeout(() => {
+                            window.location.href = 'index.html';
+                        }, 1500);
+                    } else {
+                        showMessage('❌ Account created but login failed: ' + loginResult.message, 'error');
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Create Admin Account';
+                    }
+                } else {
+                    showMessage('❌ Error: ' + result.message, 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Create Admin Account';
+                }
+            } catch (err) {
+                showMessage('❌ Error: ' + err.message, 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Create Admin Account';
+            }
+        }
+
+        function showMessage(msg, type) {
+            const div = document.getElementById('message');
+            div.innerHTML = msg;
+            div.className = type;
+        }
+
+        showMessage('⏳ Loading scripts...', 'info');
+    </script>
+</body>
+</html>

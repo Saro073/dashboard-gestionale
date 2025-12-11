@@ -129,53 +129,87 @@ dashboard-gestionale/
 - 🔒 **Permission System** - Controllo accessi granulare basato su ruoli
 - 📝 **Activity Logging** - Tracciamento completo azioni utenti
 - 🎯 **FSM Pattern** - Finite State Machine per flussi complessi (date selection)
-- 💾 **localStorage Persistence** - Storage manager con migrazione automatica dati
+- 💾 **File-Based Persistence** - Backend Node.js che salva dati su file JSON con backup automatici
 
-## 💻 Installazione
+## 💻 Installazione & Avvio
 
-### Opzione 1: Clone Repository
+### Prerequisiti
+- **Node.js** v14+ ([scarica da nodejs.org](https://nodejs.org/))
+- **Python** 3.7+ (per il server HTTP, oppure usa live-server)
+
+### ⚡ AVVIO RAPIDO (Consigliato)
 
 ```bash
+# 1. Clone o download del repository
 git clone https://github.com/Saro073/dashboard-gestionale.git
 cd dashboard-gestionale
+
+# 2. Avvia tutto in un comando!
+./start.sh
 ```
 
-### Opzione 2: Download ZIP
+✅ **Cosa succede:**
+1. ✅ Installa automaticamente le dipendenze Node.js (primo avvio)
+2. ✅ Avvia il backend persistente (porta 3000)
+3. ✅ Avvia il frontend (porta 8000)
+4. ✅ Apre il browser automaticamente
+5. ✅ Crea il primo admin account (primo accesso)
+6. ✅ Salva i dati in `./data/*.json` (persistenti!)
 
-Scarica il repository come ZIP e estrai i file.
+**Al riavvio:**
+```bash
+./start.sh  # Tutto in un comando
+```
 
-### Avvio Applicazione
+---
 
-#### A) Browser Locale (semplice)
+### Opzioni Alternative
+
+#### Opzione 1: Browser Locale (NO persistenza)
 ```bash
 # Apri direttamente index.html nel browser
 open index.html  # macOS
 start index.html # Windows
 xdg-open index.html # Linux
+
+# ⚠️ NOTA: Questo NON usa il backend!
+# I dati saranno nel localStorage (non persistenti se pulisci cache)
 ```
 
-#### B) Live Server (consigliato per sviluppo)
+#### Opzione 2: Live Server (sviluppo, NO persistenza)
 ```bash
-# Con VS Code + Live Server extension
+# VS Code + Live Server extension
 # 1. Apri progetto in VS Code
-# 2. Click destro su index.html
-# 3. "Open with Live Server"
+# 2. Click destro su index.html → "Open with Live Server"
+
+# ⚠️ NOTA: Stesso problema, niente persistenza
 ```
 
-#### C) Python HTTP Server
+#### Opzione 3: Python HTTP Server (NO persistenza)
 ```bash
-# Python 3
-python -m http.server 8000
-
-# Apri browser su http://localhost:8000
+./start.sh --no-backend  # Se vuoi solo il frontend (raro)
 ```
 
-## 🔐 Accesso Default
+---
 
-**Username:** `admin`  
-**Password:** `admin123`
+### 🔐 Primo Accesso
 
-⚠️ **Importante:** Cambia le credenziali dopo il primo accesso!
+**Se è la PRIMA volta:**
+1. Vedrai la schermata "Crea Admin Account"
+2. Compila il form con username, password, email
+3. La password deve essere ≥ 8 caratteri
+4. Clicca "Crea Account" → login automatico
+
+**Se il file `./data/dashboard_users.json` esiste:**
+- Login regolare con le credenziali precedenti
+
+**Credenziali di default (se serve reset):**
+```
+Username: admin
+Password: admin (se ripristini da zero)
+```
+
+⚠️ **Importante**: Cambia le credenziali dopo il primo accesso!
 
 ## 📖 Utilizzo
 

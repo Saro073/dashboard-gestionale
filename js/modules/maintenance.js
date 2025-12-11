@@ -217,7 +217,7 @@ const MaintenanceModule = {
       throw new Error('Intervento già avviato o completato');
     }
 
-    return await this.update(id, {
+    return this.update(id, {
       status: 'in-progress',
       startedAt: new Date().toISOString()
     });
@@ -279,7 +279,7 @@ const MaintenanceModule = {
       uploadedAt: new Date().toISOString()
     });
 
-    return await this.update(id, { photos });
+    return this.update(id, { photos });
   },
 
   /**

@@ -33,3 +33,7 @@ build/
 # Cache
 .cache/
 .parcel-cache/
+
+# Storage & Backups (generati localmente, non versionaire)
+data/
+backups/

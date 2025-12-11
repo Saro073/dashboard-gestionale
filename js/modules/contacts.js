@@ -27,7 +27,7 @@ const ContactsModule = {
    */
   getAll() {
     const allContacts = StorageManager.load(CONFIG.STORAGE_KEYS.CONTACTS, []);
-    const currentUser = AuthManager.getCurrentUser();
+    let currentUser = AuthManager.getCurrentUser();
     
     // Se non autenticato, ritorna array vuoto
     if (!currentUser) {
@@ -51,7 +51,7 @@ const ContactsModule = {
       return null;
     }
     
-    const currentUser = AuthManager.getCurrentUser();
+    let currentUser = AuthManager.getCurrentUser();
     
     // Verifica data ownership
     if (!this._canAccess(contact, currentUser)) {
@@ -248,7 +248,7 @@ const ContactsModule = {
    * @returns {object} - { success: boolean, contact: object|null, message: string }
    */
   create(contactData) {
-    const currentUser = AuthManager.getCurrentUser();
+    let currentUser = AuthManager.getCurrentUser();
     if (!currentUser) {
       NotificationService.error('Non autenticato');
       return { success: false, contact: null, message: 'Non autenticato' };
@@ -373,7 +373,7 @@ const ContactsModule = {
     }
 
     // Verifica data ownership
-    const currentUser = AuthManager.getCurrentUser();
+    let currentUser = AuthManager.getCurrentUser();
     if (!this._canAccess(allContacts[index], currentUser)) {
       console.warn(`[SECURITY] Tentativo modifica non autorizzato contatto ${id}`);
       NotificationService.error('Non autorizzato');
@@ -425,7 +425,7 @@ const ContactsModule = {
     }
 
     // Aggiorna
-    const currentUser = AuthManager.getCurrentUser();
+    currentUser = AuthManager.getCurrentUser();  // Reuse variable
 
     // Ricostruisci name se firstName o lastName cambiano
     const updatedFirstName = updates.firstName !== undefined ? updates.firstName : contact.firstName;
@@ -473,7 +473,7 @@ const ContactsModule = {
     }
     
     // Verifica data ownership
-    const currentUser = AuthManager.getCurrentUser();
+    let currentUser = AuthManager.getCurrentUser();
     if (!this._canAccess(allContacts[index], currentUser)) {
       console.warn(`[SECURITY] Tentativo eliminazione non autorizzato contatto ${id}`);
       NotificationService.error('Non autorizzato');

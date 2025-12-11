@@ -223,19 +223,31 @@ class DashboardApp {
     }
     
     // Logout
-    document.getElementById('logoutBtn').addEventListener('click', () => {
-      this.handleLogout();
-    });
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', () => {
+        this.handleLogout();
+      });
+    }
     
     // Theme toggle
-    document.getElementById('themeToggle').addEventListener('click', () => {
-      this.toggleTheme();
-    });
+    const themeToggle = document.getElementById('themeToggle');
+    if (themeToggle) {
+      themeToggle.addEventListener('click', () => {
+        this.toggleTheme();
+      });
+    }
     
     // Backup button
-    document.getElementById('backupBtn').addEventListener('click', () => {
-      document.getElementById('backupModal').classList.add('active');
-    });
+    const backupBtn = document.getElementById('backupBtn');
+    if (backupBtn) {
+      backupBtn.addEventListener('click', () => {
+        const backupModal = document.getElementById('backupModal');
+        if (backupModal) {
+          backupModal.classList.add('active');
+        }
+      });
+    }
     
     // Mobile menu toggle
     const menuToggle = document.getElementById('menuToggle');
