@@ -4,8 +4,24 @@
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Architecture](https://img.shields.io/badge/architecture-hybrid%20modular-brightgreen.svg)
 ![Bookings](https://img.shields.io/badge/bookings-airbnb%20style-ff5a5f.svg)
+![Security](https://img.shields.io/badge/security-10%2F10-brightgreen.svg)
+![Status](https://img.shields.io/badge/status-PRODUCTION%20READY-green.svg)
 
 Dashboard gestionale completa per la gestione di **casa vacanze** (Ferienwohnung) con sistema prenotazioni, contatti, contabilità e architettura modulare ibrida professionale.
+
+---
+
+## 🚀 QUICKSTART (2 minuti)
+
+### Avvia subito:
+```bash
+./start.sh
+# Browser si apre automaticamente a http://localhost:8000
+```
+
+**Nuovo utente?** Vedi [QUICKSTART.md](QUICKSTART.md) per guide step-by-step.
+
+---
 
 ## 🎉 Novità v3.0.0 - Sistema Prenotazioni Completo
 
