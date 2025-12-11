@@ -65,13 +65,13 @@
 
     <script>
         const scripts = [
-            'js/config.js',
-            'js/security/hash.js',
-            'js/security/sanitizer.js',
-            'js/storage.js',
-            'js/utils.js',
-            'js/auth/users.js',
-            'js/auth/auth.js'
+            '../js/config.js',
+            '../js/security/hash.js',
+            '../js/security/sanitizer.js',
+            '../js/storage.js',
+            '../js/utils.js',
+            '../js/auth/users.js',
+            '../js/auth/auth.js'
         ];
         let loaded = 0, scriptsReady = false;
 
@@ -128,7 +128,7 @@
                         showMessage('✅ Logged in successfully! Redirecting...', 'success');
                         document.getElementById('initForm').style.display = 'none';
                         setTimeout(() => {
-                            window.location.href = 'index.html';
+                            window.location.href = '../index.html';
                         }, 1500);
                     } else {
                         showMessage('❌ Account created but login failed: ' + loginResult.message, 'error');

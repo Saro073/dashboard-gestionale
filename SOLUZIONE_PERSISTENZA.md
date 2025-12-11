@@ -1,5 +1,9 @@
 # 🎉 PROBLEMA RISOLTO - Sistema di Persistenza Implementato
 
+> **📌 NOTA ARCHIVISTICA**: Questo documento è una **design doc storica** che descrive il percorso risolutivo della persistenza file-based. Per la **documentazione ufficiale e aggiornata**, vedi [PERSISTENCE.md](PERSISTENCE.md).
+
+---
+
 ## ✅ Cosa è Stato Fatto
 
 Ho completamente risolto il problema della perdita dati implementando un **backend Node.js** che salva tutto su file system invece di localStorage.
@@ -33,7 +37,7 @@ Browser → Backend Node.js → File JSON (./data/) → ✅ Persistenti!
    - express (server web)
    - cors (permessi cross-origin)
 
-3. **`migrate-data.html`** - Tool di migrazione
+3. **`scripts/migrate-data.html`** - Tool di migrazione
    - Sposta dati da localStorage a backend
    - Interfaccia grafica semplice
 
@@ -85,7 +89,7 @@ cd /Users/saro/Desktop/Ferienwohnung/dashboard-gestionale
 
 Apri nel browser:
 ```
-http://localhost:8001/migrate-data.html
+http://localhost:8000/scripts/migrate-data.html
 ```
 
 **Passi:**

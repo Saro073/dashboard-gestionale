@@ -3,6 +3,8 @@
 **Data Aggiornamento**: 11 Dicembre 2025  
 **Versione**: 2.0.0 con Backend Node.js
 
+> 📚 **Design Doc Storico**: Vedi [SOLUZIONE_PERSISTENZA.md](SOLUZIONE_PERSISTENZA.md) per approfondimenti tecnici e dettagli implementativi della soluzione.
+
 ---
 
 ## 🎯 Il Problema (RISOLTO)
@@ -131,7 +133,7 @@ Se il backend vede localStorage con dati:
 ### Manuale (tool migrate-data.html)
 ```bash
 ./start.sh
-# Apri nel browser: http://localhost:8000/migrate-data.html
+# Apri nel browser: http://localhost:8000/scripts/migrate-data.html
 # Clicca "Migra Dati al Backend"
 ```
 

@@ -11,7 +11,7 @@ Se è la prima volta che usi il dashboard, nessun account esiste ancora.
 **Soluzione:**
 Apri il browser a:
 ```
-http://localhost:8000/initialize-admin.html
+http://localhost:8000/scripts/initialize-admin.html
 ```
 
 Compila il form con:
@@ -61,7 +61,7 @@ location.reload();
 1. Vai a `http://localhost:8000`
 2. Se vedi **"🔐 Primo Accesso - Configura Admin"**: compila il form
 3. Se vedi **"Dashboard Gestionale" (login)**: 
-   - Vai a `http://localhost:8000/initialize-admin.html`
+   - Vai a `http://localhost:8000/scripts/initialize-admin.html`
    - O apri Console e esegui `localStorage.clear()`
 
 4. Clicca "Crea Account" o "Create Admin Account"
