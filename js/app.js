@@ -38,6 +38,12 @@ class DashboardApp {
     } catch (error) {
       ErrorHandler.handle(error, 'DashboardApp.init.loadStorage');
     }
+
+    try {
+      await CalendarSyncService.init();
+    } catch (error) {
+      ErrorHandler.handle(error, 'DashboardApp.init.calendarSync');
+    }
     
     // Inizializza autenticazione
     AuthManager.init();
@@ -99,6 +105,11 @@ class DashboardApp {
     EventBus.on(EVENTS.DOCUMENT_UPLOADED, () => this.updateStats());
     EventBus.on(EVENTS.DOCUMENT_DELETED, () => this.updateStats());
     EventBus.on(EVENTS.BOOKING_CREATED, () => this.updateStats());
+    EventBus.on(EVENTS.BOOKING_UPDATED, () => {
+      this.updateStats();
+      this.renderRecentActivity();
+      this.renderActivityLog();
+    });
     EventBus.on(EVENTS.BOOKING_DELETED, () => this.updateStats());
     EventBus.on(EVENTS.USER_CREATED, () => this.renderUsers());
     EventBus.on(EVENTS.USER_UPDATED, () => this.renderUsers());
@@ -2685,6 +2696,22 @@ class DashboardApp {
     document.getElementById('notifyMaintenanceCreated').checked = rules.maintenanceCreated !== false;
     document.getElementById('notifyMaintenanceUrgent').checked = rules.maintenanceUrgent !== false;
     document.getElementById('notifyBookingConfirmation').checked = rules.bookingConfirmation !== false;
+
+    // Load calendar sync config
+    document.getElementById('calendarSyncEnabled').checked = CalendarSyncService.config.enabled || false;
+    document.getElementById('calendarSyncInterval').value = CalendarSyncService.config.refreshIntervalMinutes || 60;
+    document.getElementById('calendarSyncSources').value = JSON.stringify(CalendarSyncService.config.sources || [], null, 2);
+
+    const lastSync = CalendarSyncService.config.lastSyncAt
+      ? Utils.formatDate(new Date(CalendarSyncService.config.lastSyncAt), true)
+      : 'Mai sincronizzato';
+    const lastResult = CalendarSyncService.config.lastSyncResult
+      ? `${CalendarSyncService.config.lastSyncResult.imported || 0} eventi importati`
+      : 'Nessun sync eseguito';
+    const syncStatus = document.getElementById('calendarSyncStatus');
+    if (syncStatus) {
+      syncStatus.textContent = `${lastSync} · ${lastResult}`;
+    }
   }
   
   setupSettingsListeners() {
@@ -2728,6 +2755,21 @@ class DashboardApp {
     const runBackupNowBtn = document.getElementById('runBackupNowBtn');
     if (runBackupNowBtn) {
       runBackupNowBtn.addEventListener('click', () => this.runBackupNow());
+    }
+
+    const saveCalendarSyncBtn = document.getElementById('saveCalendarSyncBtn');
+    if (saveCalendarSyncBtn) {
+      saveCalendarSyncBtn.addEventListener('click', () => this.saveCalendarSyncConfig());
+    }
+
+    const testCalendarSyncBtn = document.getElementById('testCalendarSyncBtn');
+    if (testCalendarSyncBtn) {
+      testCalendarSyncBtn.addEventListener('click', () => this.syncCalendarNow(true));
+    }
+
+    const syncCalendarNowBtn = document.getElementById('syncCalendarNowBtn');
+    if (syncCalendarNowBtn) {
+      syncCalendarNowBtn.addEventListener('click', () => this.syncCalendarNow(false));
     }
   }
   
@@ -2810,6 +2852,70 @@ class DashboardApp {
     
     localStorage.setItem('notification_rules', JSON.stringify(rules));
     NotificationService.success('Regole notifiche salvate!');
+  }
+
+  async saveCalendarSyncConfig() {
+    const enabled = document.getElementById('calendarSyncEnabled').checked;
+    const intervalMinutes = parseInt(document.getElementById('calendarSyncInterval').value, 10) || 60;
+    const sourcesRaw = document.getElementById('calendarSyncSources').value.trim();
+    let sources = [];
+
+    if (sourcesRaw) {
+      try {
+        sources = JSON.parse(sourcesRaw);
+      } catch (error) {
+        NotificationService.error('Il JSON dei calendari non è valido');
+        return;
+      }
+    }
+
+    if (!Array.isArray(sources)) {
+      NotificationService.error('La configurazione dei calendari deve essere un array JSON');
+      return;
+    }
+
+    const normalizedSources = sources.map(source => ({
+      id: source.id || Utils.generateId(),
+      name: source.name || 'Calendario esterno',
+      url: source.url || '',
+      propertyId: source.propertyId || null,
+      active: source.active !== false,
+      format: source.format || 'ics'
+    })).filter(source => !!source.url);
+
+    await CalendarSyncService.saveConfig({
+      enabled,
+      refreshIntervalMinutes: intervalMinutes,
+      sources: normalizedSources
+    });
+
+    const syncStatus = document.getElementById('calendarSyncStatus');
+    if (syncStatus) {
+      const lastSync = CalendarSyncService.config.lastSyncAt
+        ? Utils.formatDate(new Date(CalendarSyncService.config.lastSyncAt), true)
+        : 'Mai sincronizzato';
+      syncStatus.textContent = `${lastSync} · Configurazione salvata`;
+    }
+
+    NotificationService.success('Configurazione calendari salvata!');
+  }
+
+  async syncCalendarNow(silent = false) {
+    const result = await CalendarSyncService.syncNow({ silent });
+
+    if (!result.success) {
+      NotificationService.error(result.message || 'Sincronizzazione non riuscita');
+      return;
+    }
+
+    const syncStatus = document.getElementById('calendarSyncStatus');
+    if (syncStatus && result.summary) {
+      syncStatus.textContent = `${Utils.formatDate(new Date(result.summary.syncedAt), true)} · ${result.summary.imported} eventi importati`;
+    }
+
+    if (!silent) {
+      NotificationService.success(`Sincronizzati ${result.summary.imported} eventi calendario`);
+    }
   }
   
   // ==================== CONTACTS LISTENERS ====================

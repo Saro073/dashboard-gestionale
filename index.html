@@ -806,6 +806,40 @@
                     </div>
                 </div>
 
+                <!-- Calendar Sync Settings -->
+                <div class="settings-card">
+                    <h2>📅 Calendari Online</h2>
+                    <p class="text-secondary">Sincronizza automaticamente calendari esterni pubblici in formato ICS/ICAL</p>
+
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="calendarSyncEnabled"> Abilita sincronizzazione automatica
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="calendarSyncInterval">Intervallo sincronizzazione (minuti)</label>
+                        <input type="number" id="calendarSyncInterval" class="form-control" min="5" step="5" value="60">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="calendarSyncSources">Feed calendari JSON</label>
+                        <textarea id="calendarSyncSources" class="form-control" rows="10" placeholder='[{"name":"Airbnb Casa","url":"https://...ics","propertyId":null,"active":true,"format":"ics"}]'></textarea>
+                        <small>Ogni elemento deve avere almeno <strong>name</strong> e <strong>url</strong>. I feed pubblici Google Calendar, Airbnb e Booking.com funzionano se espongono un link ICS.</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Ultima sincronizzazione</label>
+                        <div id="calendarSyncStatus" class="text-secondary">Mai sincronizzato</div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button class="btn btn-secondary" id="testCalendarSyncBtn">🧪 Verifica feed</button>
+                        <button class="btn btn-secondary" id="syncCalendarNowBtn">🔄 Sincronizza ora</button>
+                        <button class="btn btn-primary" id="saveCalendarSyncBtn">💾 Salva Sync Calendari</button>
+                    </div>
+                </div>
+
                 <!-- Auto-Backup Settings -->
                 <div class="settings-card">
                     <h2>💾 Backup Automatico</h2>
@@ -2036,6 +2070,7 @@
     <script src="js/services/EmailService.js"></script>
     <script src="js/services/NotificationRouter.js"></script>
     <script src="js/services/AutoBackupService.js"></script>
+    <script src="js/services/CalendarSyncService.js"></script>
     
     <!-- 6. Componenti -->
     <script src="js/components/calendar.js"></script>

@@ -39,6 +39,10 @@ const BookingsModule = {
    * @private
    */
   _canAccess(booking, user) {
+    if (booking?.source === 'external-calendar' || booking?.isExternal) {
+      return !!user;
+    }
+
     // Admin può accedere a tutte le prenotazioni
     if (user && user.role === CONFIG.ROLES.ADMIN) {
       return true;

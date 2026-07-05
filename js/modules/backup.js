@@ -3,32 +3,128 @@
 
 const BackupModule = {
   /**
+   * Garantisce che tutti i dataset previsti esistano
+   * @param {object} data - Dati grezzi da normalizzare
+   * @returns {object}
+   */
+  ensureDataShape(data = {}) {
+    return {
+      users: data.users || [],
+      currentUser: data.currentUser || null,
+      contacts: data.contacts || [],
+      contactCategories: data.contactCategories || [],
+      tasks: data.tasks || [],
+      notes: data.notes || [],
+      documents: data.documents || [],
+      bookings: data.bookings || [],
+      accounting: data.accounting || [],
+      activityLog: data.activityLog || [],
+      properties: data.properties || [],
+      cleaning: data.cleaning || [],
+      maintenance: data.maintenance || [],
+      theme: data.theme || null,
+      calendarSync: data.calendarSync || null
+    };
+  },
+
+  /**
+   * Calcola statistiche di riepilogo
+   * @param {object} data - Dataset normalizzato
+   * @returns {object}
+   */
+  computeStats(data = {}) {
+    return {
+      totalContacts: (data.contacts || []).length,
+      totalTasks: (data.tasks || []).length,
+      totalNotes: (data.notes || []).length,
+      totalBookings: (data.bookings || []).length,
+      totalTransactions: (data.accounting || []).length
+    };
+  },
+
+  /**
+   * Normalizza backup in formati legacy o correnti
+   * @param {object} rawBackup - Dati caricati dal file
+   * @returns {object|null}
+   */
+  normalizeBackupData(rawBackup) {
+    if (!rawBackup) return null;
+
+    // Formato corrente: contiene version + data
+    if (rawBackup.version && rawBackup.data) {
+      const normalizedData = this.ensureDataShape(rawBackup.data);
+      const stats = rawBackup.stats || this.computeStats(normalizedData);
+
+      return {
+        ...rawBackup,
+        version: rawBackup.version || CONFIG.APP_VERSION,
+        timestamp: rawBackup.timestamp || new Date().toISOString(),
+        data: normalizedData,
+        stats
+      };
+    }
+
+    // Formato legacy: dump diretto del localStorage
+    const hasLegacyKeys = Object.values(CONFIG.STORAGE_KEYS).some(key => rawBackup[key] !== undefined);
+    if (!hasLegacyKeys) {
+      return null;
+    }
+
+    const normalizedData = this.ensureDataShape({
+      users: rawBackup[CONFIG.STORAGE_KEYS.USERS],
+      currentUser: rawBackup[CONFIG.STORAGE_KEYS.CURRENT_USER],
+      contacts: rawBackup[CONFIG.STORAGE_KEYS.CONTACTS],
+      contactCategories: rawBackup[CONFIG.STORAGE_KEYS.CONTACT_CATEGORIES],
+      tasks: rawBackup[CONFIG.STORAGE_KEYS.TASKS],
+      notes: rawBackup[CONFIG.STORAGE_KEYS.NOTES],
+      documents: rawBackup[CONFIG.STORAGE_KEYS.DOCUMENTS],
+      bookings: rawBackup[CONFIG.STORAGE_KEYS.BOOKINGS],
+      accounting: rawBackup[CONFIG.STORAGE_KEYS.ACCOUNTING],
+      activityLog: rawBackup[CONFIG.STORAGE_KEYS.ACTIVITY_LOG],
+      properties: rawBackup[CONFIG.STORAGE_KEYS.PROPERTIES],
+      cleaning: rawBackup[CONFIG.STORAGE_KEYS.CLEANING],
+      maintenance: rawBackup[CONFIG.STORAGE_KEYS.MAINTENANCE],
+      theme: rawBackup[CONFIG.STORAGE_KEYS.THEME]
+    });
+
+    return {
+      version: CONFIG.APP_VERSION,
+      timestamp: rawBackup.timestamp || new Date().toISOString(),
+      data: normalizedData,
+      stats: this.computeStats(normalizedData),
+      legacy: true
+    };
+  },
+
+  /**
    * Crea backup completo di tutti i dati
    * @returns {object} - Oggetto backup
    */
   createBackup() {
     try {
+      const data = this.ensureDataShape({
+        users: StorageManager.load(CONFIG.STORAGE_KEYS.USERS, []),
+        currentUser: StorageManager.load(CONFIG.STORAGE_KEYS.CURRENT_USER, null),
+        contacts: StorageManager.load(CONFIG.STORAGE_KEYS.CONTACTS, []),
+        contactCategories: StorageManager.load(CONFIG.STORAGE_KEYS.CONTACT_CATEGORIES, []),
+        tasks: StorageManager.load(CONFIG.STORAGE_KEYS.TASKS, []),
+        notes: StorageManager.load(CONFIG.STORAGE_KEYS.NOTES, []),
+        documents: StorageManager.load(CONFIG.STORAGE_KEYS.DOCUMENTS, []),
+        bookings: StorageManager.load(CONFIG.STORAGE_KEYS.BOOKINGS, []),
+        accounting: StorageManager.load(CONFIG.STORAGE_KEYS.ACCOUNTING, []),
+        activityLog: StorageManager.load(CONFIG.STORAGE_KEYS.ACTIVITY_LOG, []),
+        properties: StorageManager.load(CONFIG.STORAGE_KEYS.PROPERTIES, []),
+        cleaning: StorageManager.load(CONFIG.STORAGE_KEYS.CLEANING, []),
+        maintenance: StorageManager.load(CONFIG.STORAGE_KEYS.MAINTENANCE, []),
+        theme: StorageManager.load(CONFIG.STORAGE_KEYS.THEME, null),
+        calendarSync: StorageManager.load(CONFIG.STORAGE_KEYS.CALENDAR_SYNC, null)
+      });
+
       const backup = {
         version: CONFIG.APP_VERSION,
         timestamp: new Date().toISOString(),
-        data: {
-          users: StorageManager.load(CONFIG.STORAGE_KEYS.USERS, []),
-          contacts: StorageManager.load(CONFIG.STORAGE_KEYS.CONTACTS, []),
-          contactCategories: StorageManager.load(CONFIG.STORAGE_KEYS.CONTACT_CATEGORIES, []),
-          tasks: StorageManager.load(CONFIG.STORAGE_KEYS.TASKS, []),
-          notes: StorageManager.load(CONFIG.STORAGE_KEYS.NOTES, []),
-          documents: StorageManager.load(CONFIG.STORAGE_KEYS.DOCUMENTS, []),
-          bookings: StorageManager.load(CONFIG.STORAGE_KEYS.BOOKINGS, []),
-          accounting: StorageManager.load(CONFIG.STORAGE_KEYS.ACCOUNTING, []),
-          activityLog: StorageManager.load(CONFIG.STORAGE_KEYS.ACTIVITY_LOG, [])
-        },
-        stats: {
-          totalContacts: StorageManager.load(CONFIG.STORAGE_KEYS.CONTACTS, []).length,
-          totalTasks: StorageManager.load(CONFIG.STORAGE_KEYS.TASKS, []).length,
-          totalNotes: StorageManager.load(CONFIG.STORAGE_KEYS.NOTES, []).length,
-          totalBookings: StorageManager.load(CONFIG.STORAGE_KEYS.BOOKINGS, []).length,
-          totalTransactions: StorageManager.load(CONFIG.STORAGE_KEYS.ACCOUNTING, []).length
-        }
+        data,
+        stats: this.computeStats(data)
       };
       
       return backup;
@@ -70,28 +166,36 @@ const BackupModule = {
    */
   async restoreBackup(backupData) {
     try {
-      // Validazione backup
-      if (!backupData || !backupData.version || !backupData.data) {
+      const normalizedBackup = this.normalizeBackupData(backupData);
+      if (!normalizedBackup) {
         return { 
           success: false, 
           message: 'File backup non valido o corrotto' 
         };
       }
 
+      const { data, stats, version, timestamp, legacy } = normalizedBackup;
+      const safeStats = stats || this.computeStats(data);
+      const backupTimestamp = timestamp || new Date().toISOString();
+
       // Verifica versione compatibilità (opzionale, per ora accetta tutti)
-      if (backupData.version !== CONFIG.APP_VERSION) {
-        console.warn(`Backup da versione diversa: ${backupData.version} vs ${CONFIG.APP_VERSION}`);
+      if (version && version !== CONFIG.APP_VERSION) {
+        console.warn(`Backup da versione diversa: ${version} vs ${CONFIG.APP_VERSION}`);
+      }
+
+      if (legacy) {
+        NotificationService.info('Backup legacy rilevato: i dati verranno convertiti automaticamente.');
       }
 
       // Conferma dall'utente
       const confirmed = confirm(
-        `Ripristinare il backup del ${Utils.formatDate(new Date(backupData.timestamp), true)}?\n\n` +
+        `Ripristinare il backup del ${Utils.formatDate(new Date(backupTimestamp), true)}?\n\n` +
         `Questo sovrascriverà TUTTI i dati attuali!\n\n` +
-        `Contatti: ${backupData.stats.totalContacts}\n` +
-        `Tasks: ${backupData.stats.totalTasks}\n` +
-        `Note: ${backupData.stats.totalNotes}\n` +
-        `Prenotazioni: ${backupData.stats.totalBookings}\n` +
-        `Transazioni: ${backupData.stats.totalTransactions}`
+        `Contatti: ${safeStats.totalContacts}\n` +
+        `Tasks: ${safeStats.totalTasks}\n` +
+        `Note: ${safeStats.totalNotes}\n` +
+        `Prenotazioni: ${safeStats.totalBookings}\n` +
+        `Transazioni: ${safeStats.totalTransactions}`
       );
 
       if (!confirmed) {
@@ -104,22 +208,28 @@ const BackupModule = {
       localStorage.setItem(emergencyBackupKey, JSON.stringify(currentBackup));
 
       // Ripristina tutti i dati
-      StorageManager.save(CONFIG.STORAGE_KEYS.USERS, backupData.data.users || []);
-      StorageManager.save(CONFIG.STORAGE_KEYS.CONTACTS, backupData.data.contacts || []);
-      StorageManager.save(CONFIG.STORAGE_KEYS.CONTACT_CATEGORIES, backupData.data.contactCategories || []);
-      StorageManager.save(CONFIG.STORAGE_KEYS.TASKS, backupData.data.tasks || []);
-      StorageManager.save(CONFIG.STORAGE_KEYS.NOTES, backupData.data.notes || []);
-      StorageManager.save(CONFIG.STORAGE_KEYS.DOCUMENTS, backupData.data.documents || []);
-      StorageManager.save(CONFIG.STORAGE_KEYS.BOOKINGS, backupData.data.bookings || []);
-      StorageManager.save(CONFIG.STORAGE_KEYS.ACCOUNTING, backupData.data.accounting || []);
-      StorageManager.save(CONFIG.STORAGE_KEYS.ACTIVITY_LOG, backupData.data.activityLog || []);
+      StorageManager.save(CONFIG.STORAGE_KEYS.USERS, data.users || []);
+      StorageManager.save(CONFIG.STORAGE_KEYS.CURRENT_USER, data.currentUser || null);
+      StorageManager.save(CONFIG.STORAGE_KEYS.CONTACTS, data.contacts || []);
+      StorageManager.save(CONFIG.STORAGE_KEYS.CONTACT_CATEGORIES, data.contactCategories || []);
+      StorageManager.save(CONFIG.STORAGE_KEYS.TASKS, data.tasks || []);
+      StorageManager.save(CONFIG.STORAGE_KEYS.NOTES, data.notes || []);
+      StorageManager.save(CONFIG.STORAGE_KEYS.DOCUMENTS, data.documents || []);
+      StorageManager.save(CONFIG.STORAGE_KEYS.BOOKINGS, data.bookings || []);
+      StorageManager.save(CONFIG.STORAGE_KEYS.ACCOUNTING, data.accounting || []);
+      StorageManager.save(CONFIG.STORAGE_KEYS.ACTIVITY_LOG, data.activityLog || []);
+      StorageManager.save(CONFIG.STORAGE_KEYS.PROPERTIES, data.properties || []);
+      StorageManager.save(CONFIG.STORAGE_KEYS.CLEANING, data.cleaning || []);
+      StorageManager.save(CONFIG.STORAGE_KEYS.MAINTENANCE, data.maintenance || []);
+      StorageManager.save(CONFIG.STORAGE_KEYS.THEME, data.theme || null);
+      StorageManager.save(CONFIG.STORAGE_KEYS.CALENDAR_SYNC, data.calendarSync || null);
 
       // Log attività
       ActivityLog.log(
         CONFIG.ACTION_TYPES.UPLOAD,
         'backup',
         0,
-        { restored: backupData.stats }
+        { restored: safeStats, legacy }
       );
 
       NotificationService.success('Backup ripristinato con successo! Ricarica la pagina.');
@@ -149,7 +259,8 @@ const BackupModule = {
    */
   async handleFileUpload(file) {
     try {
-      if (!file || file.type !== 'application/json') {
+      const isJsonFile = file && (file.type === 'application/json' || file.name.toLowerCase().endsWith('.json') || file.type === '');
+      if (!file || !isJsonFile) {
         NotificationService.error('Seleziona un file JSON valido');
         return { success: false, message: 'File non valido' };
       }

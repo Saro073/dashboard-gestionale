@@ -206,6 +206,54 @@ app.post('/api/backup', async (req, res) => {
 });
 
 /**
+ * GET /api/calendar/fetch?url=...
+ * Proxy server-side per feed calendario remoti (ICS/ICAL) così il browser non dipende dal CORS.
+ */
+app.get('/api/calendar/fetch', async (req, res) => {
+  try {
+    const rawUrl = req.query.url;
+
+    if (!rawUrl || typeof rawUrl !== 'string') {
+      return res.status(400).json({ success: false, error: 'URL mancante' });
+    }
+
+    let targetUrl;
+    try {
+      targetUrl = new URL(rawUrl);
+    } catch (error) {
+      return res.status(400).json({ success: false, error: 'URL non valido' });
+    }
+
+    if (!['http:', 'https:'].includes(targetUrl.protocol)) {
+      return res.status(400).json({ success: false, error: 'Protocollo non supportato' });
+    }
+
+    const response = await fetch(targetUrl.toString(), {
+      headers: {
+        'User-Agent': 'Dashboard-Gestionale-CalendarSync/1.0'
+      }
+    });
+
+    if (!response.ok) {
+      return res.status(502).json({
+        success: false,
+        error: `Feed non raggiungibile (${response.status})`
+      });
+    }
+
+    const text = await response.text();
+    res.json({
+      success: true,
+      text,
+      contentType: response.headers.get('content-type') || 'text/calendar'
+    });
+  } catch (error) {
+    console.error('❌ Errore GET /api/calendar/fetch:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
  * GET /health
  * Health check per verificare che il server sia attivo
  */

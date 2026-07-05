@@ -20,7 +20,8 @@ const CONFIG = {
     ACCOUNTING: 'dashboard_accounting',
     PROPERTIES: 'dashboard_properties',
     CLEANING: 'dashboard_cleaning',
-    MAINTENANCE: 'dashboard_maintenance'
+    MAINTENANCE: 'dashboard_maintenance',
+    CALENDAR_SYNC: 'dashboard_calendar_sync'
   },  
   // Ruoli utente
   ROLES: {
