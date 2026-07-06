@@ -224,6 +224,11 @@ const BookingsHandlers = {
 
     container.innerHTML = filtered.map(booking => {
       const guestInfo = BookingsModule.getGuestInfo(booking);
+      const sourceLabel = booking.externalSourceName || this.getChannelLabel(booking.channel);
+      const sourceBadge = sourceLabel
+        ? `<span class="item-badge" style="background: #eef2ff; color: #1e3a8a;">Canale: ${Utils.escapeHtml(sourceLabel)}</span>`
+        : '';
+
       return `
         <div class="booking-item">
           <div class="booking-content">
@@ -239,9 +244,10 @@ const BookingsHandlers = {
             </div>
             <div class="item-meta">
               <span class="item-badge badge-${booking.status}">${this.getStatusLabel(booking.status)}</span>
-              <span class="item-badge badge-${booking.channel}">${this.getChannelLabel(booking.channel)}</span>
+              ${sourceBadge}
               ${booking.isPaid ? '<span class="item-badge" style="background: #d1fae5; color: #065f46;">✓ Pagato</span>' : ''}
             </div>
+            ${booking.notes ? `<p style="margin-top: .5rem; color: #6b7280; font-size: .85rem;">📝 ${Utils.escapeHtml(booking.notes.substring(0, 120))}${booking.notes.length > 120 ? '…' : ''}</p>` : ''}
           </div>
           <div class="booking-amount">€${booking.totalAmount.toFixed(2)}</div>
           <div class="item-actions">

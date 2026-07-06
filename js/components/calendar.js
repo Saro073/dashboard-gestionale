@@ -202,14 +202,15 @@ const CalendarComponent = {
     const isCheckOut = booking.checkOut === dateStr;
     
     // Tooltip dettagliato
+    const channelLabel = booking.externalSourceName || booking.bookingChannel || booking.channel || '';
     const tooltipLines = [
       `Ospite: ${guestInfo.fullName}`,
       `Check-in: ${Utils.formatDate(booking.checkIn)}`,
       `Check-out: ${Utils.formatDate(booking.checkOut)}`,
       `${nights} nott${nights > 1 ? 'i' : 'e'}`,
-      booking.totalPrice ? `Prezzo: €${booking.totalPrice}` : '',
+      booking.totalAmount ? `Prezzo: €${booking.totalAmount}` : '',
       `Stato: ${this.getStatusLabel(booking.status)}`,
-      booking.bookingChannel ? `Canale: ${booking.bookingChannel}` : ''
+      channelLabel ? `Canale: ${channelLabel}` : ''
     ].filter(Boolean).join('\n');
     
     // Icone check-in/check-out
